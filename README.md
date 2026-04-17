@@ -1,6 +1,6 @@
 <div align="center">
 
-# ✨ TikTok Creator Intelligence
+# TikTok Creator Intelligence
 
 **Turning comment noise into content clarity — one insight at a time.**
 
@@ -14,7 +14,7 @@
 
 ---
 
-## 💡 The Problem
+## The Problem
 
 > *Small TikTok creators struggle to extract meaningful insights from user comments because the feedback is unstructured, scattered, and difficult to analyze manually.*
 
@@ -24,7 +24,7 @@ This project builds a tool that does exactly that.
 
 ---
 
-## 👤 Who Is This For?
+## Who Is This For?
 
 A **small TikTok creator** (1k–10k followers) who:
 - Posts content regularly and wants to grow
@@ -34,10 +34,10 @@ A **small TikTok creator** (1k–10k followers) who:
 
 ---
 
-## 🗺️ How It Works
+## How It Works
 
 ```
-📥 INPUT                    🧠 NLP PIPELINE               📊 OUTPUT
+INPUT                     NLP PIPELINE                  OUTPUT
 ─────────────────────────   ──────────────────────────    ─────────────────────────────
 CSV file with TikTok     →  1. Text Preprocessing      →  Sentiment distribution
 comments + video metrics    2. Sentiment Analysis           (e.g. 70% positive)
@@ -48,7 +48,7 @@ comments + video metrics    2. Sentiment Analysis           (e.g. 70% positive)
 
 ---
 
-## 🎯 Goals
+## Goals
 
 ### Main Goal
 By **July 2026**, deliver a working web-based NLP prototype that:
@@ -63,13 +63,13 @@ By **July 2026**, deliver a working web-based NLP prototype that:
 - [ ] Generate simple, actionable **content recommendations** from patterns
 
 ### Out of Scope
-- ❌ No TikTok API integration — data is CSV-based
-- ❌ No custom deep learning model training
-- ❌ No mobile app
+- No TikTok API integration — data is CSV-based
+- No custom deep learning model training
+- No mobile app
 
 ---
 
-## 🛠️ Tech Stack
+## Tech Stack
 
 | Layer | Tools |
 |-------|-------|
@@ -81,64 +81,87 @@ By **July 2026**, deliver a working web-based NLP prototype that:
 
 ---
 
-## 🔎 State of the Art (S3 — Related Work)
+## State of the Art (S3 — Related Work)
 
-### 1) Similar products/prototypes (examples)
+### 1) Existing products / prototypes
 
-1. **Brandwatch Consumer Intelligence** — social listening and sentiment analytics across major social platforms.
-2. **Sprout Social (Listening)** — sentiment/topic tracking and engagement analytics for social media teams.
-3. **Hugging Face demo ecosystem** (e.g., sentiment + topic extraction Spaces) — open prototypes for text classification and keyword discovery.
+1. **Hootsuite Insights**
+   - Social media monitoring and sentiment analysis.
+   - Tracks audience reactions and trends across channels.
+   - Strong for brand-level listening and reporting workflows.
+2. **Brandwatch**
+   - AI-based sentiment and trend analysis.
+   - Large-scale social media analytics with enterprise dashboards.
+   - Supports deep segmentation and long-horizon brand monitoring.
+3. **MonkeyLearn**
+   - Sentiment analysis and keyword extraction.
+   - General-purpose NLP workflow for business text analytics.
+   - Useful as a flexible baseline for text classification pipelines.
 
-### 2) Why these do not fully fit this use case
+### 2) Limitations of existing solutions
 
-- **Cost and access**: enterprise tools are expensive for small creators.
-- **Workflow mismatch**: many tools are built for brands/agencies, not quick creator-level CSV analysis.
-- **Limited transparency/customization**: hosted products often hide pipeline details and are harder to adapt for course-specific experimentation.
-- **Prototype gaps**: demo apps are useful references but often not end-to-end creator dashboards.
+- Designed primarily for large companies, not small creators.
+- Expensive and not easily accessible for early-stage creator budgets.
+- Not tailored to TikTok-specific content and creator workflows.
+- Strong on visualization, weaker on direct actionable guidance.
+- Do not consistently connect comments to concrete content strategy decisions.
 
-### 3) Reverse engineering: common stack used by others
+### 3) Reverse engineering (common tech stack)
 
-- **LLMs / Transformer classifiers** for sentiment and zero-shot labeling.
-- **Embedding models** (e.g., Sentence-Transformers/BERT variants) for semantic similarity and topic grouping.
-- **RAG + Vector DBs** (e.g., Chroma/Pinecone/FAISS) in newer assistants to ground responses in retrieved comments/knowledge.
-- **Dashboard layer** (often Streamlit/React) for upload, filtering, and insight visualization.
+**Methods used**
+- Sentiment analysis (text classification: positive, negative, neutral).
+- Keyword extraction (TF-IDF, frequency-based methods).
+- Topic clustering and trend tracking over time windows.
 
-### 4) Reusable parts for this project
+**Models / tools**
+- BERT-family models for contextual text understanding.
+- spaCy and scikit-learn for preprocessing, vectorization, and baseline modeling.
+- Rule-based normalization and lightweight statistical features for fast iteration.
 
-- Reuse open-source sentiment/topic models as baselines.
-- Reuse embedding-based clustering/keyword patterns for grouping creator feedback.
-- Reuse dashboard interaction patterns from existing social listening demos.
+**Interface patterns**
+- Web dashboards for upload, filtering, and visualization.
+- Time-series panels for trend movement and topic shifts.
+- Export and reporting views for decision support.
 
-### 5) Our delta / contribution
+### 4) Parts I can reuse
 
-- **Creator-first scope**: optimized for small TikTok creators (not enterprise marketing teams).
-- **Fast CSV-to-insight loop**: upload comments and get sentiment + keywords + actionable content recommendations quickly.
-- **Practical lightweight stack**: maintainable, transparent pipeline suitable for course delivery and future extension.
+- Text preprocessing pipeline (cleaning and normalization).
+- Sentiment classification methods.
+- Keyword extraction techniques.
+- Basic dashboard structure for displaying results.
+
+### 5) My contribution (delta)
+
+- Focus on small TikTok creators (1k-10k followers).
+- Simple and accessible system using CSV input.
+- Links comments to individual video performance.
+- Generates actionable insights, not just data.
+- Helps creators decide what content and niche to focus on.
 
 ---
 
-## 🗓️ Project Log
+## Project Log
 
 > *Updated every time a task is completed — follow the journey.*
 
 | # | Milestone | Due Date | Project Deliverable | Status |
 |---|-----------|----------|---------------------|--------|
-| S1 | Introduction & NLP Landscape | March 27, 2026 | 📖 Introduced project idea; mapped TikTok creator pain point to the NLP problem space | ✅ Done |
-| S2 | Problem Definition & Relevance | April 10, 2026 | 📌 Defined problem statement, user profile (1k–10k followers), SMART goals, NLP pipeline sketch, and non-goals | ✅ Done |
-| S3 | State of the Art (SOTA) | April 17, 2026 | 🔎 Scouted comparable sentiment/NLP products, documented limitations, reverse-engineered common stack, defined project delta | ✅ Done |
-| S4 | UX Design | April 24, 2026 | 🎨 Design Streamlit UI wireframes: file upload flow, sentiment dashboard, keyword view, recommendations panel | ⏳ Upcoming |
-| S5 | Agile Workflow Planning | May 8, 2026 | 🗂️ Define sprints, user stories, and acceptance criteria for each pipeline component | ⏳ Upcoming |
-| S6 | Data Strategy | May 15, 2026 | 📊 Source / generate sample TikTok comment CSVs; define preprocessing schema and data quality rules | ⏳ Upcoming |
-| S7 | NLP Modeling (Isolated) | May 22, 2026 | 🧠 Implement and evaluate sentiment classifier + keyword extractor as standalone modules | ⏳ Upcoming |
-| S8 | End-2-End System Architecture | June 5, 2026 | 🏗️ Connect preprocessing → NLP → Streamlit dashboard into a working end-to-end prototype | ⏳ Upcoming |
-| S9 | Evaluation & Quality | June 12, 2026 | 🧪 Evaluate model accuracy, measure latency on 300-comment CSV, document quality metrics | ⏳ Upcoming |
-| S10 | Optimizing your System | June 19, 2026 | ⚡ Profile bottlenecks, tune model/pipeline for speed and accuracy improvements | ⏳ Upcoming |
-| S11 | Reflection & Storytelling | June 26, 2026 | 📝 Write project reflection; prepare narrative on learnings, trade-offs, and next steps | ⏳ Upcoming |
-| S12 | Final Presentation | July 3, 2026 | 🎤 Deliver live demo and final presentation of the complete TikTok Creator Intelligence prototype | ⏳ Upcoming |
+| S1 | Introduction & NLP Landscape | March 27, 2026 | Introduced project idea; mapped TikTok creator pain point to the NLP problem space | Done |
+| S2 | Problem Definition & Relevance | April 10, 2026 | Defined problem statement, user profile (1k-10k followers), SMART goals, NLP pipeline sketch, and non-goals | Done |
+| S3 | State of the Art (SOTA) | April 17, 2026 | Scouted comparable sentiment/NLP products, documented limitations, reverse-engineered common stack, defined project delta | Done |
+| S4 | UX Design | April 24, 2026 | Design Streamlit UI wireframes: file upload flow, sentiment dashboard, keyword view, recommendations panel | Upcoming |
+| S5 | Agile Workflow Planning | May 8, 2026 | Define sprints, user stories, and acceptance criteria for each pipeline component | Upcoming |
+| S6 | Data Strategy | May 15, 2026 | Source / generate sample TikTok comment CSVs; define preprocessing schema and data quality rules | Upcoming |
+| S7 | NLP Modeling (Isolated) | May 22, 2026 | Implement and evaluate sentiment classifier + keyword extractor as standalone modules | Upcoming |
+| S8 | End-2-End System Architecture | June 5, 2026 | Connect preprocessing -> NLP -> Streamlit dashboard into a working end-to-end prototype | Upcoming |
+| S9 | Evaluation & Quality | June 12, 2026 | Evaluate model accuracy, measure latency on 300-comment CSV, document quality metrics | Upcoming |
+| S10 | Optimizing your System | June 19, 2026 | Profile bottlenecks, tune model/pipeline for speed and accuracy improvements | Upcoming |
+| S11 | Reflection & Storytelling | June 26, 2026 | Write project reflection; prepare narrative on learnings, trade-offs, and next steps | Upcoming |
+| S12 | Final Presentation | July 3, 2026 | Deliver live demo and final presentation of the complete TikTok Creator Intelligence prototype | Upcoming |
 
 ---
 
-## 🚀 Running the App
+## Running the App
 
 ```bash
 # Install dependencies
@@ -150,7 +173,7 @@ streamlit run app/main.py
 
 ---
 
-## 📁 Project Structure
+## Project Structure
 
 ```
 tiktok-creator-intelligence/
@@ -163,7 +186,7 @@ tiktok-creator-intelligence/
 
 ---
 
-## 📄 Documentation
+## Documentation
 
 Full project documentation (PDF) will be added upon completion of the course.
 
@@ -171,7 +194,7 @@ Full project documentation (PDF) will be added upon completion of the course.
 
 <div align="center">
 
-Made with 💜 by **Chinelo Lydia Nweke**  
+Made by **Chinelo Lydia Nweke**  
 NLP Course Project · Spring 2026
 
 </div>
