@@ -121,10 +121,20 @@ By **July 2026**, deliver a working web-based NLP prototype that:
 
 > *Updated every time a task is completed — follow the journey.*
 
-| Date | Task | Status |
-|------|------|--------|
-| April 10, 2026 | 📌 Project scoping — defined problem statement, user profile, SMART goals, NLP pipeline sketch, and non-goals | ✅ Done |
-| April 17, 2026 | 🔎 S3 research — reviewed comparable sentiment/NLP products, documented limitations, reverse-engineered common stack, and defined project delta | ✅ Done |
+| # | Milestone | Due Date | Project Deliverable | Status |
+|---|-----------|----------|---------------------|--------|
+| S1 | Introduction & NLP Landscape | March 27, 2026 | 📖 Introduced project idea; mapped TikTok creator pain point to the NLP problem space | ✅ Done |
+| S2 | Problem Definition & Relevance | April 10, 2026 | 📌 Defined problem statement, user profile (1k–10k followers), SMART goals, NLP pipeline sketch, and non-goals | ✅ Done |
+| S3 | State of the Art (SOTA) | April 17, 2026 | 🔎 Scouted comparable sentiment/NLP products, documented limitations, reverse-engineered common stack, defined project delta | ✅ Done |
+| S4 | UX Design | April 24, 2026 | 🎨 Design Streamlit UI wireframes: file upload flow, sentiment dashboard, keyword view, recommendations panel | ⏳ Upcoming |
+| S5 | Agile Workflow Planning | May 8, 2026 | 🗂️ Define sprints, user stories, and acceptance criteria for each pipeline component | ⏳ Upcoming |
+| S6 | Data Strategy | May 15, 2026 | 📊 Source / generate sample TikTok comment CSVs; define preprocessing schema and data quality rules | ⏳ Upcoming |
+| S7 | NLP Modeling (Isolated) | May 22, 2026 | 🧠 Implement and evaluate sentiment classifier + keyword extractor as standalone modules | ⏳ Upcoming |
+| S8 | End-2-End System Architecture | June 5, 2026 | 🏗️ Connect preprocessing → NLP → Streamlit dashboard into a working end-to-end prototype | ⏳ Upcoming |
+| S9 | Evaluation & Quality | June 12, 2026 | 🧪 Evaluate model accuracy, measure latency on 300-comment CSV, document quality metrics | ⏳ Upcoming |
+| S10 | Optimizing your System | June 19, 2026 | ⚡ Profile bottlenecks, tune model/pipeline for speed and accuracy improvements | ⏳ Upcoming |
+| S11 | Reflection & Storytelling | June 26, 2026 | 📝 Write project reflection; prepare narrative on learnings, trade-offs, and next steps | ⏳ Upcoming |
+| S12 | Final Presentation | July 3, 2026 | 🎤 Deliver live demo and final presentation of the complete TikTok Creator Intelligence prototype | ⏳ Upcoming |
 
 ---
 
