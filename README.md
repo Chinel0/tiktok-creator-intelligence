@@ -81,6 +81,42 @@ By **July 2026**, deliver a working web-based NLP prototype that:
 
 ---
 
+## 🔎 State of the Art (S3 — Related Work)
+
+### 1) Similar products/prototypes (examples)
+
+1. **Brandwatch Consumer Intelligence** — social listening and sentiment analytics across major social platforms.
+2. **Sprout Social (Listening)** — sentiment/topic tracking and engagement analytics for social media teams.
+3. **Hugging Face demo ecosystem** (e.g., sentiment + topic extraction Spaces) — open prototypes for text classification and keyword discovery.
+
+### 2) Why these do not fully fit this use case
+
+- **Cost and access**: enterprise tools are expensive for small creators.
+- **Workflow mismatch**: many tools are built for brands/agencies, not quick creator-level CSV analysis.
+- **Limited transparency/customization**: hosted products often hide pipeline details and are harder to adapt for course-specific experimentation.
+- **Prototype gaps**: demo apps are useful references but often not end-to-end creator dashboards.
+
+### 3) Reverse engineering: common stack used by others
+
+- **LLMs / Transformer classifiers** for sentiment and zero-shot labeling.
+- **Embedding models** (e.g., Sentence-Transformers/BERT variants) for semantic similarity and topic grouping.
+- **RAG + Vector DBs** (e.g., Chroma/Pinecone/FAISS) in newer assistants to ground responses in retrieved comments/knowledge.
+- **Dashboard layer** (often Streamlit/React) for upload, filtering, and insight visualization.
+
+### 4) Reusable parts for this project
+
+- Reuse open-source sentiment/topic models as baselines.
+- Reuse embedding-based clustering/keyword patterns for grouping creator feedback.
+- Reuse dashboard interaction patterns from existing social listening demos.
+
+### 5) Our delta / contribution
+
+- **Creator-first scope**: optimized for small TikTok creators (not enterprise marketing teams).
+- **Fast CSV-to-insight loop**: upload comments and get sentiment + keywords + actionable content recommendations quickly.
+- **Practical lightweight stack**: maintainable, transparent pipeline suitable for course delivery and future extension.
+
+---
+
 ## 🗓️ Project Log
 
 > *Updated every time a task is completed — follow the journey.*
@@ -88,6 +124,7 @@ By **July 2026**, deliver a working web-based NLP prototype that:
 | Date | Task | Status |
 |------|------|--------|
 | April 10, 2026 | 📌 Project scoping — defined problem statement, user profile, SMART goals, NLP pipeline sketch, and non-goals | ✅ Done |
+| April 17, 2026 | 🔎 S3 research — reviewed comparable sentiment/NLP products, documented limitations, reverse-engineered common stack, and defined project delta | ✅ Done |
 
 ---
 
