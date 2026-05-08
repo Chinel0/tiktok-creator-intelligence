@@ -215,9 +215,9 @@ Read more about the UX design in [`documents/ux design.md`](documents/ux%20desig
 - [ ] As a creator, I want dark mode so that the dashboard feels modern.
 - [ ] As a creator, I want to export results as PDF so that I can save insights.
 - [ ] As a creator, I want keyword word clouds so that topics are easier to explore.
-- [ ] As a creator, I want real-time TikTok API integration.
-- [ ] As a creator, I want mobile app support.
-- [ ] As a creator, I want multilingual support.
+- [ ] As a creator, I want real-time TikTok API integration so that I can analyze comments without manual CSV exports.
+- [ ] As a creator, I want mobile app support so that I can access insights on the go.
+- [ ] As a creator, I want multilingual support so that I can understand audience feedback across languages.
 
 ---
 
