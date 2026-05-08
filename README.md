@@ -144,15 +144,15 @@ By **July 2026**, deliver a working web-based NLP prototype that:
 
 The UX is designed as a simple flow from upload to action, so creators can move from raw comments to clear content decisions quickly.
 
-### Screen 1 — Upload File
-The user starts by uploading a CSV with TikTok comments and metrics. The main goal is a fast, low-friction entry point.
-
-![Upload File Screen](https://github.com/user-attachments/assets/e8a4d398-fd4e-4fae-ba78-4236effe5e8f)
-
-### Screen 2 — Dashboard Overview
+### Screen 1 — Dashboard Overview 
 After processing, the dashboard gives a high-level summary of sentiment and key performance signals.
 
-![Dashboard Screen](https://github.com/user-attachments/assets/8f1e916d-2c28-4755-923e-65283cb3b2cd)
+![Dashboard Screen Screen](https://github.com/user-attachments/assets/e8a4d398-fd4e-4fae-ba78-4236effe5e8f)
+
+### Screen 2 —  Upload File
+The user starts by uploading a CSV with TikTok comments and metrics. The main goal is a fast, low-friction entry point.
+
+![Upload File](https://github.com/user-attachments/assets/8f1e916d-2c28-4755-923e-65283cb3b2cd)
 
 ### Screen 3 — Insight Details
 This screen highlights top keywords, themes, and deeper audience feedback patterns.
