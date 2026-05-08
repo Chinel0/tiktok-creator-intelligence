@@ -11,17 +11,16 @@ The flow prioritizes:
 - Clear sentiment and keyword visibility
 - Actionable recommendations for next content decisions
 
-## Screen 1 — Upload File
-This screen introduces the product and guides users to upload a CSV file containing TikTok comments and video metrics.  
-Primary UX decision: keep one clear call-to-action so users can start quickly.
-
-![Upload Screen Wireframe](https://github.com/user-attachments/assets/4a6053ee-c521-4250-94d3-cdc9b1dc38d4)
-
-## Screen 2 — Dashboard Overview
+## Screen 1 — Dashboard Overview
 After upload, users land on a high-level dashboard view showing key metrics and sentiment distribution.  
 Primary UX decision: surface summary information first so creators can understand audience mood immediately.
 
-![Dashboard Wireframe](https://github.com/user-attachments/assets/e1885191-1942-40d6-9dc9-486dfdb9cefd)
+![Dashboard Wireframe](https://github.com/user-attachments/assets/4a6053ee-c521-4250-94d3-cdc9b1dc38d4)
+## Screen 2 — Upload File
+This screen introduces the product and guides users to upload a CSV file containing TikTok comments and video metrics.  
+Primary UX decision: keep one clear call-to-action so users can start quickly.
+
+![Upload Screen Wireframe](https://github.com/user-attachments/assets/e1885191-1942-40d6-9dc9-486dfdb9cefd)
 
 ## Screen 3 — Insight Details
 This view focuses on deeper insights such as top keywords/themes and audience feedback patterns.  
