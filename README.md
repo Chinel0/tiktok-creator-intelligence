@@ -168,7 +168,7 @@ This screen highlights top keywords, themes, and deeper audience feedback patter
 
 At the last step, users see a recommendations view that converts the analysis into next-post ideas.
 
-![User Flow Diagram](https://github.com/user-attachments/assets/a4bdd686-cbe0-44c5-a9b0-0873a3b08c23)
+![User Flow Diagram](https://github.com/user-attachments/assets/e48451b0-6098-4fed-a84c-566fb8462953)
 
 Read more about the UX design in [`documents/ux design.md`](documents/ux%20design.md).
 
