@@ -199,6 +199,28 @@ Read more about the UX design in [`documents/ux design.md`](documents/ux%20desig
 
 ---
 
+## Backlog (S5 — User Stories)
+
+- [ ] As a creator, I want to upload a CSV file so that I can analyze TikTok comments.
+- [ ] As a creator, I want the system to clean comment text so that the analysis is more accurate.
+- [ ] As a creator, I want comments classified as positive, negative, or neutral so that I can understand audience sentiment.
+- [ ] As a creator, I want to view sentiment statistics so that I can quickly understand audience reactions.
+- [ ] As a creator, I want the system to extract keywords so that I can identify common discussion topics.
+- [ ] As a creator, I want to see recommendations based on comments so that I can improve my content.
+- [ ] As a creator, I want to view results in a dashboard so that insights are easy to understand.
+- [ ] As a creator, I want charts for sentiment distribution so that insights are visualized clearly.
+- [ ] As a creator, I want to compare videos so that I can identify better-performing content.
+- [ ] As a creator, I want upload instructions so that the app is easy to use.
+- [ ] As a creator, I want loading indicators so that I know processing is happening.
+- [ ] As a creator, I want dark mode so that the dashboard feels modern.
+- [ ] As a creator, I want to export results as PDF so that I can save insights.
+- [ ] As a creator, I want keyword word clouds so that topics are easier to explore.
+- [ ] As a creator, I want real-time TikTok API integration so that I can analyze comments without manual CSV exports.
+- [ ] As a creator, I want mobile app support so that I can access insights on the go.
+- [ ] As a creator, I want multilingual support so that I can understand audience feedback across languages.
+
+---
+
 ## Running the App
 
 ```bash
