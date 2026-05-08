@@ -159,17 +159,14 @@ This screen highlights top keywords, themes, and deeper audience feedback patter
 
 ![Insight Screen](https://github.com/user-attachments/assets/5d26322e-a3fc-4b03-a97c-029cea1d3c83)
 
-### Screen 4 — Recommendations
-The final screen turns analysis into practical content recommendations for upcoming posts.
-
-![Recommendations Screen](https://github.com/user-attachments/assets/a4bdd686-cbe0-44c5-a9b0-0873a3b08c23)
-
 ### Clear User Flow
 1. Upload TikTok comment CSV  
 2. Run preprocessing and sentiment analysis  
 3. Review dashboard summary  
 4. Explore detailed keyword/theme insights  
 5. Act on recommendations for next content
+
+At the last step, users see a recommendations view that converts the analysis into next-post ideas.
 
 ![User Flow Diagram](https://github.com/user-attachments/assets/a4bdd686-cbe0-44c5-a9b0-0873a3b08c23)
 
