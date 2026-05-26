@@ -216,11 +216,71 @@ streamlit run app/main.py
 ```
 tiktok-creator-intelligence/
 ├── app/                  # Streamlit app (coming soon)
-├── data/                 # Sample CSV data (coming soon)
+├── data/                 # Output CSVs from the scraper
 ├── notebooks/            # Exploration & development notebooks
+├── config.py             # Scraper configuration (delays, paths, limits)
+├── scrape.py             # Data collection script
 ├── requirements.txt      # Python dependencies
 └── README.md
 ```
+
+---
+
+## Data Collection Setup
+
+The scraper collects videos and comments from your public TikTok account and saves them to `data/videos_<timestamp>.csv` and `data/comments_<timestamp>.csv`.
+
+### 1 — Create and activate a virtual environment
+
+```bash
+# Windows (PowerShell)
+python -m venv .venv
+.venv\Scripts\Activate.ps1
+```
+
+### 2 — Install Python dependencies
+
+```bash
+pip install -r requirements.txt
+```
+
+### 3 — Install Playwright browsers
+
+```bash
+playwright install chromium
+```
+
+### 4 — First-run authentication
+
+On the first run the script opens a real browser window so you can log in to TikTok manually. After you log in, press **Enter** in the terminal. The session token is saved to `session.json` and reused on every run after that.
+
+```bash
+python scrape.py
+```
+
+> **If the session expires** (TikTok rotates tokens periodically), delete `session.json` and run the script again to re-authenticate.
+
+### 5 — Resume after a crash
+
+If the script is interrupted, just re-run it. It reads the existing `videos_*.csv`, skips any videos already collected, and appends new rows to the same files.
+
+### Configuration
+
+All tuneable settings live in `config.py`:
+
+| Setting | Default | What it does |
+|---------|---------|--------------|
+| `TIKTOK_USERNAME` | `"ichbinnelo"` | Account to scrape |
+| `DELAY_BETWEEN_VIDEOS` | `2.5` s | Pause between videos |
+| `MAX_COMMENTS_PER_VIDEO` | `None` | Cap per video (`None` = all) |
+| `BACKOFF_SECONDS` | `[30, 60, 120]` | Retry wait times on HTTP 429 |
+
+### Troubleshooting
+
+- **`msToken` not found after login** — make sure you can see your TikTok feed, then press Enter. Try refreshing the TikTok page before pressing Enter.
+- **TikTokApi import error** — run `pip install --upgrade TikTokApi` and retry.
+- **Rate limited (HTTP 429)** — increase `DELAY_BETWEEN_VIDEOS` in `config.py` and wait ~30 minutes before re-running.
+- **API completely broken** — TikTok sometimes changes its internal API. If `scrape.py` fails persistently, check the [TikTokApi releases](https://github.com/davidteather/TikTok-Api/releases) for a patch version update.
 
 ---
 

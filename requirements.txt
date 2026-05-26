@@ -1,0 +1,14 @@
+# ── Streamlit app ─────────────────────────────────────────────────────────────
+streamlit>=1.30.0
+pandas>=2.0.0
+plotly>=5.18.0
+openpyxl>=3.1.0          # for reading Excel files in the upload page
+
+# ── NLP ───────────────────────────────────────────────────────────────────────
+nltk>=3.8.0               # VADER sentiment analyser
+scikit-learn>=1.3.0       # TF-IDF keyword extraction
+vaderSentiment>=3.3.2     # standalone VADER (used as backup)
+
+# ── Scraper (separate from the app) ───────────────────────────────────────────
+TikTokApi==6.5.2
+playwright>=1.40.0
