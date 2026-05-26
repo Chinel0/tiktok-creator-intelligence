@@ -188,14 +188,109 @@ Read more about the UX design in [`documents/ux design.md`](documents/ux%20desig
 | S2 | Problem Definition & Relevance | April 10, 2026 | Defined problem statement, user profile (1k-10k followers), SMART goals, NLP pipeline sketch, and non-goals | Done |
 | S3 | State of the Art (SOTA) | April 17, 2026 | Scouted comparable sentiment/NLP products, documented limitations, reverse-engineered common stack, defined project delta | Done |
 | S4 | UX Design | April 24, 2026 | Design Streamlit UI wireframes: file upload flow, sentiment dashboard, keyword view, recommendations panel | Done |
-| S5 | Agile Workflow Planning | May 8, 2026 | Define sprints, user stories, and acceptance criteria for each pipeline component | Upcoming |
-| S6 | Data Strategy | May 15, 2026 | Source / generate sample TikTok comment CSVs; define preprocessing schema and data quality rules | Upcoming |
+| S5 | Agile Workflow Planning | May 8, 2026 | Define sprints, user stories, and acceptance criteria for each pipeline component | Done |
+| S6 | Data Strategy | May 15, 2026 | Source / generate sample TikTok comment CSVs; define preprocessing schema and data quality rules | Done |
 | S7 | NLP Modeling (Isolated) | May 22, 2026 | Implement and evaluate sentiment classifier + keyword extractor as standalone modules | Upcoming |
 | S8 | End-2-End System Architecture | June 5, 2026 | Connect preprocessing -> NLP -> Streamlit dashboard into a working end-to-end prototype | Upcoming |
 | S9 | Evaluation & Quality | June 12, 2026 | Evaluate model accuracy, measure latency on 300-comment CSV, document quality metrics | Upcoming |
 | S10 | Optimizing your System | June 19, 2026 | Profile bottlenecks, tune model/pipeline for speed and accuracy improvements | Upcoming |
 | S11 | Reflection & Storytelling | June 26, 2026 | Write project reflection; prepare narrative on learnings, trade-offs, and next steps | Upcoming |
 | S12 | Final Presentation | July 3, 2026 | Deliver live demo and final presentation of the complete TikTok Creator Intelligence prototype | Upcoming |
+
+---
+
+### Development Log — May 26–27, 2026
+
+#### Data Collection
+
+The goal for this session was to collect real comment data from the `@ichbinnelo` TikTok account to use as the primary dataset for the NLP pipeline.
+
+**Approach 1 — TikTokApi (abandoned)**
+
+The first attempt used `TikTokApi==6.5.2`, an unofficial Python library that controls a headless browser internally. After installation and setup, every run failed with a JavaScript error deep inside the library's internals:
+
+```
+TikTokApi: Page.evaluate: ReferenceError: opts is not defined
+```
+
+This is a known incompatibility between TikTokApi 6.5.2 and newer versions of Playwright. No patch version was available. Rather than waiting for an upstream fix, the library was abandoned entirely.
+
+**Approach 2 — Direct Playwright browser automation (adopted)**
+
+A custom scraper was written from scratch using Playwright directly, with no dependency on TikTokApi. This gave full control over the browser, the network, and the page lifecycle.
+
+`scrape_playwright.py` works as follows:
+
+1. Launches a real, visible Chromium browser (headless mode disabled to avoid TikTok bot detection)
+2. On first run, waits for manual login; on every subsequent run, restores the session from `browser_state.json` automatically
+3. Visits the `@ichbinnelo` profile page and extracts video data from TikTok's embedded `__UNIVERSAL_DATA_FOR_REHYDRATION__` JSON tag; falls back to scraping `<a href="/video/...">` links from the DOM if JSON extraction returns nothing
+4. For each video, intercepts the TikTok comments API response (`/api/comment/list/`) at the network layer using `page.on("response", handler)` and parses the JSON directly
+
+**Diagnosing 0 comments — the critical fix**
+
+The initial comment collection run processed all 138 videos and returned zero comments for every one. A diagnostic script (`debug_network.py`) was written to log every network request made by a live TikTok video page. The output revealed the root cause: TikTok's comment API call (`/api/comment/list/`) is not made on page load. It only fires after the user clicks the comment icon (`[data-e2e="comment-icon"]`). Without that click, the API is never triggered and no data is returned.
+
+The fix — a single click on that element immediately after page load — was applied to `collect_comments.py`:
+
+```python
+await page.click('[data-e2e="comment-icon"]', timeout=5000)
+await page.wait_for_timeout(3000)
+```
+
+After this fix, comment collection worked correctly across all videos.
+
+**Final dataset**
+
+`collect_comments.py` was run against all 138 scraped video URLs. The full run completed overnight without interruption.
+
+| File | Description | Rows |
+|------|-------------|------|
+| `data/videos_20260526_162528.csv` | Video IDs and URLs (no engagement stats — JSON path issue) | 138 |
+| `data/comments_20260526_233400.csv` | All collected comments across 138 videos | 1,211 |
+
+To recover real video engagement metrics (views, likes, comment counts, share counts), a Chrome-based export from the previous day (`export_2026-05-25T19-18-23-674Z.xlsx`, 123 videos) was merged with the scraped data. The two datasets were matched on `video_id`; 100 IDs overlapped, 23 were unique to the Excel export, and 38 were unique to the scraper output.
+
+The merged result is saved as `data/videos_merged.csv` (161 videos total, 123 with full engagement metrics).
+
+This is now the primary dataset for the NLP pipeline.
+
+---
+
+#### Application Build
+
+A complete Streamlit web application was built in parallel with the data collection work. The application is the front-end layer of the NLP pipeline — it accepts a comment CSV, runs analysis, and returns structured insights.
+
+**Authentication layer**
+
+Login and registration are handled by `app/auth.py`, which uses a local SQLite database (`app/users.db`). Passwords are hashed with SHA-256 before storage. The schema has two tables: `users` (account credentials and TikTok handle) and `analyses` (one row per saved analysis run, linked to the user by foreign key). Session state is managed through Streamlit's `st.session_state` object so the logged-in user persists across page navigation.
+
+**NLP pipeline**
+
+Three modules under `nlp/` form the analysis core:
+
+| Module | Purpose |
+|--------|---------|
+| `nlp/preprocessor.py` | Lowercases text; strips URLs, @mentions, hashtags, punctuation, and numbers; filters non-English comments; drops tokens shorter than 3 characters |
+| `nlp/sentiment.py` | Runs VADER sentiment analysis; classifies each comment as positive (compound >= 0.05), negative (compound <= -0.05), or neutral; returns per-comment scores and an aggregate summary |
+| `nlp/keywords.py` | Applies TF-IDF (max 200 features, unigrams and bigrams, English stopwords removed) to extract the top keywords per sentiment class and per content cluster |
+
+Four content clusters are defined by seed vocabulary: positive reactions, improvement requests, content requests, and audience engagement signals. The keyword module maps extracted terms to these clusters to produce the themed insight cards shown in the app.
+
+**Streamlit pages**
+
+The application has five pages:
+
+| Page | What it does |
+|------|--------------|
+| Upload | Accepts a CSV file of comments; detects the comment text column automatically; runs the full NLP pipeline on submission |
+| Dashboard | Displays an overall sentiment breakdown (pie chart + score), top 10 keywords by frequency, and a summary of the most-liked comments |
+| Insights | Shows per-cluster keyword cards; surfaces the most positive and most negative individual comments with their VADER scores |
+| Recommendations | Generates three to five plain-language content recommendations derived from the sentiment and keyword results |
+| User Profile | Displays account details, TikTok handle, and a history of past analysis runs saved to the database |
+
+**Demo data**
+
+A sample file at `data/raw/sample_comments.csv` (50 comments spanning food, hair, and lifestyle content) is included so the app can be demonstrated without real scraped data. The Upload page surfaces this automatically when no file is provided.
 
 ---
 
