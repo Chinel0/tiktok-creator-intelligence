@@ -1,3 +1,18 @@
+# ── Project-specific ignores ──────────────────────────────────────────────────
+
+# Playwright saved login session — contains TikTok cookies, never commit this
+browser_state.json
+
+# Scraped data files — large, generated, re-creatable by running the scraper
+data/*.csv
+data/*.png
+data/*.xlsx
+
+# SQLite database — contains user accounts and passwords
+app/users.db
+*.db
+
+# ── Standard Python ignores ───────────────────────────────────────────────────
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[codz]
