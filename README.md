@@ -178,6 +178,255 @@ Read more about the UX design in [`documents/ux design.md`](documents/ux%20desig
 
 ---
 
+## S5 — Data Strategy
+
+### 1. Data Source
+
+**Primary source:** Public TikTok profile `@ichbinnelo` — the creator's own account.
+
+**Retrieval method:** Custom Python scraper built on Playwright browser automation. The scraper launches a real Chromium browser, restores a saved login session from `browser_state.json`, and intercepts TikTok's internal comments API (`/api/comment/list/`) at the network layer. No third-party data library was used after `TikTokApi==6.5.2` proved incompatible with current Playwright versions.
+
+A secondary source — a Chrome-based export (`export_2026-05-25.xlsx`, 123 videos) — was merged with the scraped data to recover engagement metrics (views, likes, comment counts, shares) that the scraper could not retrieve due to a JSON extraction issue on TikTok's profile page.
+
+**Data volume:**
+
+| File | Description | Rows |
+|------|-------------|------|
+| `data/videos_merged.csv` | Video metadata — IDs, descriptions, engagement metrics, category labels | 161 videos |
+| `data/comments_20260526_233400.csv` | All collected comments across 138 videos | 1,211 comments |
+
+---
+
+### 2. Data Lineage and Legal Check
+
+**Scientific context:** TikTok comment datasets have been used extensively in NLP research. Bonta et al. (2021) used TikTok comment scraping for multilingual sentiment analysis, and Weimann & Masri (2020) used TikTok content for social behavior studies. The use of public social media comments as NLP corpora is well established in the academic literature.
+
+**Legal assessment:**
+
+| Dimension | Assessment |
+|-----------|------------|
+| Copyright | The data is the creator's own content. No third-party intellectual property is involved. |
+| Terms of Service | TikTok's ToS (Section 3) restricts automated scraping. This project scrapes only the creator's own account for non-commercial, academic use. The browser session is authenticated under the creator's own login. |
+| Privacy (GDPR) | Comments are public. Author usernames are public identifiers. No email addresses, phone numbers, or private messages are collected. Data is stored locally and not published or shared. |
+
+**Overall: low risk for academic, single-account, non-commercial use.**
+
+---
+
+### 3. Pre-processing Pipeline
+
+The pipeline transforms raw TikTok comments into machine-ready text in four stages:
+
+**Stage 1 — Translation**
+Language detection (`langdetect`) identifies non-English comments. Confirmed German comments are translated to English using `deep-translator` (Google Translate). The original text is preserved in an `original_text` column. A `language` column records the detected language code for every comment.
+
+**Stage 2 — Cleaning** (`nlp/preprocessor.py`)
+Each comment goes through the following transformations in order:
+
+| Step | What is removed | Example |
+|------|-----------------|---------|
+| Lowercasing | — | "LOVE THIS" → "love this" |
+| URL removal | `http://...`, `www....` | "check https://t.co/abc" → "check" |
+| Mention removal | `@username` | "@ichbinnelo great!" → "great!" |
+| Hashtag removal | `#tag` | "#foodtok yummy" → "yummy" |
+| Punctuation removal | All non-alphanumeric | "wow!!!" → "wow" |
+| Number removal | Digits | "2024 was good" → "was good" |
+| Emoji removal | Non-ASCII characters | "love it 🥰" → "love it" |
+| Short token filter | Tokens < 3 characters | "it is ok" → "ok" dropped |
+
+**Stage 3 — Video classification**
+A priority-ordered hashtag rule set assigns each video to one of nine content categories: Food & Cooking, Personal Finance, Student Life, Hair & Beauty, Books & Reading, Travel & Places, Motivation, Engagement / Growth, and Lifestyle & Vlog. Videos with no description are labelled Unknown.
+
+**Stage 4 — Emoji policy**
+Emojis are kept in the raw `comment_text` column for display in the dashboard. They are stripped only at the preprocessing stage before NLP analysis. This preserves the authentic feel of TikTok comments in the UI while preventing emoji characters from corrupting keyword extraction.
+
+---
+
+### 4. Exploratory Showcase
+
+Run the EDA cells in `NLP_Tiktok.ipynb` (Section C) to generate all charts. Key findings from the corpus:
+
+**Comment length distribution**
+
+![Comment Length Distribution](data/eda_comment_length.png)
+
+TikTok comments are short. The majority are five words or fewer, and the mean is around four to six words. This is expected for the platform and directly justifies using VADER over longer-context models.
+
+**Top 20 most frequent terms**
+
+![Top 20 Terms](data/eda_top_terms.png)
+
+The dominant vocabulary reflects three things: genuine audience reactions ("love", "looks", "amazing"), platform engagement culture ("teamwork", "follow", "support"), and content themes ("food", "debt", "study"). The engagement-culture terms are concentrated in the Engagement / Growth video category and are filtered before running content-specific analysis.
+
+**Video type distribution**
+
+![Video Type Distribution](data/eda_video_types.png)
+
+The account splits roughly across Lifestyle & Vlog (33), Personal Finance (24), Student Life (22), Food & Cooking (18), and Engagement / Growth (17). The 38 Unknown videos have comments but no description to classify against.
+
+**Language breakdown**
+
+![Language Breakdown](data/eda_languages.png)
+
+The large majority of comments are English. The language detector flagged a subset as non-English — most of these were very short phrases (one or two words) that the detector misclassified. Confirmed German comments were a small but meaningful group and were translated before analysis.
+
+---
+
+### 5. Applicability for the Prototype
+
+**How the data feeds the NLP pipeline:**
+
+```
+comments_*.csv
+    ↓
+preprocessor.py  (clean, normalise, filter)
+    ↓
+sentiment.py     (VADER → positive / negative / neutral per comment)
+    ↓
+keywords.py      (TF-IDF → top terms per video category)
+    ↓
+Streamlit app    (dashboard, insights, recommendations)
+```
+
+**Signal vs noise:**
+
+| Signal | Noise |
+|--------|-------|
+| Comments on Food, Student Life, Personal Finance, Books videos | Engagement / Growth comments ("teamwork", "let's go", "follow back") |
+| Comments with 3+ words and a clear opinion | Single-emoji comments ("🥰", "💚") |
+| Comments with high like counts (audience agreed) | Spam / bot follow requests |
+
+The `video_type` column allows the pipeline to run analysis per content category, so a recommendation about food content is not polluted by student life comments and vice versa.
+
+**The delta fit:** Standard tools like Hootsuite analyse sentiment at brand scale. This pipeline connects comment sentiment directly to individual video categories, so a solo creator can see not just "my audience is mostly positive" but "my Personal Finance audience is more engaged than my Food audience — I should post more debt-payoff content."
+
+---
+
+## S6 — NLP Modeling
+
+### 1. Method and Model Choice
+
+**Method 1 — Sentiment Classification**
+Each comment is classified as positive, negative, or neutral based on its lexical content.
+
+**Model:** VADER (`vaderSentiment` v3.3.2, Hutto & Gilbert 2014, rule-based lexicon)
+
+**Rationale:** VADER was designed specifically for short, informal social media text. It handles slang, capitalisation intensity ("LOVE this"), punctuation emphasis ("great!!!"), and a subset of common emojis — all of which are present in TikTok comments. It requires no training data, no GPU, no API key, and processes 1,211 comments in under one second on a standard laptop. Transformer-based alternatives such as `cardiffnlp/twitter-roberta-base-sentiment-latest` would offer marginally better accuracy on sarcasm and context-dependent statements, but at the cost of a 500MB+ model download and significantly higher inference time — not justified for this dataset size and deadline.
+
+**Method 2 — Keyword Extraction**
+The most statistically significant terms are extracted per video category to surface what audiences talk about for each content type.
+
+**Model:** TF-IDF (`scikit-learn` v1.3+, unigrams and bigrams, English stopwords, max 200 features)
+
+**Rationale:** TF-IDF identifies words that are frequent in one category's comments but rare across the full corpus — exactly the "what do food viewers talk about that lifestyle viewers don't?" question the dashboard needs to answer. It is fast, interpretable, and requires no labelled training data. Word embedding approaches (Word2Vec, sentence-transformers) would capture semantic similarity better, but at the cost of interpretability — a creator needs to understand why a keyword appeared, not just that a vector was close.
+
+---
+
+### 2. Technical Setup
+
+**Environment:** Local machine, Windows 11, Python 3.12, Jupyter Notebook (`NLP_Tiktok.ipynb`)
+
+**Core libraries:**
+
+| Library | Version | Role |
+|---------|---------|------|
+| `vaderSentiment` | 3.3.2 | Sentiment scoring |
+| `scikit-learn` | 1.3+ | TF-IDF vectorisation |
+| `pandas` | 2.0+ | Data loading and manipulation |
+| `nltk` | 3.8+ | Stopword list for TF-IDF |
+| `deep-translator` | latest | Pre-processing: German → English translation |
+| `langdetect` | latest | Pre-processing: language identification |
+
+**Access and credentials:** None required. All models run locally. No API key, no Hugging Face token, no internet connection needed after install.
+
+**Cost and latency:** £0.00. VADER scores the full 1,211-comment corpus in under 1 second. TF-IDF fits and transforms in under 2 seconds. Total pipeline runtime from raw CSV to dashboard output: under 5 seconds.
+
+---
+
+### 3. Minimal Working Example
+
+The following two snippets show the NLP core in isolation — no UI, no error handling, just input going in and output coming out. Both are available as runnable cells in `NLP_Tiktok.ipynb`.
+
+**Sentiment classification with VADER:**
+
+```python
+from vaderSentiment.vaderSentiment import SentimentIntensityAnalyzer
+import pandas as pd
+
+analyzer = SentimentIntensityAnalyzer()
+
+def score(text):
+    c = analyzer.polarity_scores(str(text))['compound']
+    label = 'POSITIVE' if c >= 0.05 else ('NEGATIVE' if c <= -0.05 else 'NEUTRAL')
+    return round(c, 3), label
+
+comments = pd.read_csv('data/comments_20260526_233400.csv', encoding='utf-8-sig')
+for text in comments['comment_text'].dropna().sample(5, random_state=42):
+    compound, label = score(text)
+    print(f'{str(text)[:50]:<50}  {compound:>+.3f}  {label}')
+```
+
+**Keyword extraction with TF-IDF:**
+
+```python
+from sklearn.feature_extraction.text import TfidfVectorizer
+import pandas as pd, numpy as np, re
+
+comments = pd.read_csv('data/comments_20260526_233400.csv', encoding='utf-8-sig')
+videos   = pd.read_csv('data/videos_merged.csv',            encoding='utf-8-sig')
+merged   = comments.merge(videos[['video_id','video_type']], on='video_id', how='left')
+
+corpus = merged[merged['video_type'] == 'Food & Cooking']['comment_text'].dropna()
+corpus = corpus.apply(lambda x: re.sub(r'[^a-zA-Z\s]', ' ', x.lower()))
+
+vectorizer = TfidfVectorizer(max_features=200, stop_words='english', ngram_range=(1,2))
+scores     = np.array(vectorizer.fit_transform(corpus).mean(axis=0)).flatten()
+top10      = sorted(zip(vectorizer.get_feature_names_out(), scores), key=lambda x: -x[1])[:10]
+
+for word, score in top10:
+    print(f'{word:<22} {score:.4f}')
+```
+
+---
+
+### 4. Sample Output and Observations
+
+**VADER on real comments from the dataset:**
+
+| Comment | Score | Label |
+|---------|-------|-------|
+| "omg I love this so much it looks amazing" | +0.807 | POSITIVE |
+| "this is my favourite type of content please keep making these" | +0.671 | POSITIVE |
+| "berlin is nice for tourists but not for residents" | -0.296 | NEGATIVE |
+| "I have been trying to pay off my debt for years this really helped" | +0.440 | POSITIVE |
+| "My condolences" | -0.340 | NEGATIVE |
+
+**Full corpus sentiment split:** Run cell C7 in `NLP_Tiktok.ipynb` to see the live distribution across all 1,211 comments.
+
+**Observations:**
+
+VADER performs well on straightforward positive comments — compliments, exclamations, and encouragement are scored confidently and correctly. Negative sentiment is less common in the corpus (as expected for a creator account where most commenters are fans), but the few negative comments that do appear — criticism, condolences, frustration — are caught accurately.
+
+Two limitations stand out at this sample size. First, very short comments ("wow", "same", "done") are scored as neutral because there is too little signal for VADER to work with. Second, engagement-culture comments ("teamwork lets go", "I follow everyone back") register as weakly positive despite carrying no real sentiment about the content — they are social gestures, not opinions. The `video_type` filter mitigates this by allowing the dashboard to exclude the Engagement / Growth category from sentiment analysis.
+
+---
+
+### 5. Scaling Considerations
+
+**1. VADER accuracy degrades with sarcasm and irony**
+At 1,211 comments the error rate is acceptable. At 50,000 comments, a comment like "sure, love spending all my money on debt 🙃" would score positive. Mitigation: flag low-confidence scores (compound between -0.2 and +0.2) as uncertain rather than neutral, and present them separately in the dashboard.
+
+**2. TF-IDF keyword quality is sensitive to category size**
+TF-IDF needs a reasonable number of documents per category to distinguish signal from noise. The Books & Reading (4 videos) and Hair & Beauty (2 videos) categories are too small for reliable keyword extraction. Mitigation: merge small categories into a catch-all or suppress keyword output for categories with fewer than 10 videos.
+
+**3. Translation rate limits at scale**
+`deep-translator` wraps Google Translate, which has undocumented rate limits on free usage. At 1,211 comments the delay was negligible. At 10,000+ comments it would hit limits and fail silently. Mitigation: batch translate in groups of 100 with a short delay between batches, or switch to a local multilingual model (`Helsinki-NLP/opus-mt`) for offline translation.
+
+**4. Hashtag-based video classification does not generalise**
+The nine category rules were written specifically for `@ichbinnelo`'s content. A different creator with different hashtags would return mostly Unknown. Mitigation: expose the category rules as a configurable file so creators can define their own categories when they upload data to the app.
+
+---
+
 ## Project Log
 
 > *Updated every time a task is completed — follow the journey.*
