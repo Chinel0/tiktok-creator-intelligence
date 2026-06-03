@@ -4,11 +4,11 @@
 
 **Turning comment noise into content clarity — one insight at a time.**
 
-![Status](https://img.shields.io/badge/status-in%20development-f9a8d4?style=for-the-badge)
-![Python](https://img.shields.io/badge/python-3.10+-c084fc?style=for-the-badge&logo=python&logoColor=white)
+![Status](https://img.shields.io/badge/status-prototype%20complete-86efac?style=for-the-badge)
+![Python](https://img.shields.io/badge/python-3.12-c084fc?style=for-the-badge&logo=python&logoColor=white)
 ![Streamlit](https://img.shields.io/badge/streamlit-app-fb7185?style=for-the-badge&logo=streamlit&logoColor=white)
 ![NLP](https://img.shields.io/badge/NLP-university%20project-a78bfa?style=for-the-badge)
-![Last Updated](https://img.shields.io/badge/last%20updated-April%202026-f0abfc?style=for-the-badge)
+![Last Updated](https://img.shields.io/badge/last%20updated-June%202026-f0abfc?style=for-the-badge)
 
 </div>
 
@@ -37,13 +37,13 @@ A **small TikTok creator** (1k–10k followers) who:
 ## How It Works
 
 ```
-INPUT                     NLP PIPELINE                  OUTPUT
-─────────────────────────   ──────────────────────────    ─────────────────────────────
-CSV file with TikTok     →  1. Text Preprocessing      →  Sentiment distribution
-comments + video metrics    2. Sentiment Analysis           (e.g. 70% positive)
-(likes, views)              3. Keyword Extraction       →  Top topics from comments
-                                                        →  Audience insights
-                                                        →  Content recommendations
+DATA COLLECTION                NLP PIPELINE                  OUTPUT
+──────────────────────────     ──────────────────────────    ──────────────────────────────
+Connect TikTok in the app  →   1. Text Preprocessing      →  Sentiment distribution
+(Playwright scraper runs,       2. Language translation         (e.g. 30% positive)
+browser collects comments)      3. Sentiment Analysis       →  Top keywords by category
+        OR                      4. Keyword Extraction       →  Audience insights
+Upload a CSV file           →                              →  Content recommendations
 ```
 
 ---
@@ -57,13 +57,14 @@ By **July 2026**, deliver a working web-based NLP prototype that:
 - Processes up to **300 comments** in a matter of seconds
 
 ### Sub-Goals
-- [ ] Build a **text preprocessing pipeline** (cleaning, normalization, tokenization)
-- [ ] Implement **sentiment classification** — positive, negative, neutral
-- [ ] Develop a clean **Streamlit interface** for file upload and insight display
-- [ ] Generate simple, actionable **content recommendations** from patterns
+- [x] Build a **text preprocessing pipeline** (cleaning, normalization, tokenization)
+- [x] Implement **sentiment classification** — positive, negative, neutral
+- [x] Develop a clean **Streamlit interface** with login, dashboard, insights, and recommendations
+- [x] Generate simple, actionable **content recommendations** from patterns
+- [x] Build a **live TikTok scraper** integrated into the app with a progress bar
 
 ### Out of Scope
-- No TikTok API integration — data is CSV-based
+- No official TikTok API integration — uses Playwright browser automation
 - No custom deep learning model training
 - No mobile app
 
@@ -73,11 +74,16 @@ By **July 2026**, deliver a working web-based NLP prototype that:
 
 | Layer | Tools |
 |-------|-------|
-| Language | Python 3.10+ |
+| Language | Python 3.12 |
 | Web Interface | Streamlit |
-| NLP | spaCy, NLTK |
-| Data Processing | pandas, scikit-learn |
-| Visualization | matplotlib / plotly |
+| NLP — Sentiment | VADER (`vaderSentiment`) |
+| NLP — Keywords | TF-IDF (`scikit-learn`) |
+| NLP — Preprocessing | NLTK, regex |
+| Data Collection | Playwright (Chromium browser automation) |
+| Translation | `deep-translator`, `langdetect` |
+| Data Processing | pandas |
+| Visualization | Plotly |
+| Authentication | SQLite, SHA-256 |
 
 ---
 
@@ -439,8 +445,8 @@ The nine category rules were written specifically for `@ichbinnelo`'s content. A
 | S4 | UX Design | April 24, 2026 | Design Streamlit UI wireframes: file upload flow, sentiment dashboard, keyword view, recommendations panel | Done |
 | S5 | Agile Workflow Planning | May 8, 2026 | Define sprints, user stories, and acceptance criteria for each pipeline component | Done |
 | S6 | Data Strategy | May 15, 2026 | Source / generate sample TikTok comment CSVs; define preprocessing schema and data quality rules | Done |
-| S7 | NLP Modeling (Isolated) | May 22, 2026 | Implement and evaluate sentiment classifier + keyword extractor as standalone modules | Upcoming |
-| S8 | End-2-End System Architecture | June 5, 2026 | Connect preprocessing -> NLP -> Streamlit dashboard into a working end-to-end prototype | Upcoming |
+| S7 | NLP Modeling (Isolated) | May 22, 2026 | Implement and evaluate sentiment classifier + keyword extractor as standalone modules | Done |
+| S8 | End-2-End System Architecture | June 5, 2026 | Connect preprocessing -> NLP -> Streamlit dashboard into a working end-to-end prototype | Done |
 | S9 | Evaluation & Quality | June 12, 2026 | Evaluate model accuracy, measure latency on 300-comment CSV, document quality metrics | Upcoming |
 | S10 | Optimizing your System | June 19, 2026 | Profile bottlenecks, tune model/pipeline for speed and accuracy improvements | Upcoming |
 | S11 | Reflection & Storytelling | June 26, 2026 | Write project reflection; prepare narrative on learnings, trade-offs, and next steps | Upcoming |
@@ -546,12 +552,21 @@ A sample file at `data/raw/sample_comments.csv` (50 comments spanning food, hair
 ## Running the App
 
 ```bash
-# Install dependencies
+# 1. Create and activate a virtual environment (Windows)
+python -m venv .venv
+.venv\Scripts\Activate.ps1
+
+# 2. Install all dependencies
 pip install -r requirements.txt
 
-# Launch the Streamlit app
-streamlit run app/main.py
+# 3. Install the Playwright browser (run once)
+python -m playwright install chromium
+
+# 4. Launch the app
+python -m streamlit run app/main.py
 ```
+
+The app opens at `http://localhost:8501`. Register an account, then go to **Upload Data → Connect TikTok** to scrape your own account, or use the **Upload CSV** tab to load an existing export.
 
 ---
 
@@ -559,72 +574,137 @@ streamlit run app/main.py
 
 ```
 tiktok-creator-intelligence/
-├── app/                  # Streamlit app (coming soon)
-├── data/                 # Output CSVs from the scraper
-├── notebooks/            # Exploration & development notebooks
-├── config.py             # Scraper configuration (delays, paths, limits)
-├── scrape.py             # Data collection script
-├── requirements.txt      # Python dependencies
+├── app/
+│   ├── main.py                  # Streamlit entry point, page router, auth
+│   ├── auth.py                  # SQLite login/register, analysis history
+│   ├── scraper_runner.py        # Subprocess manager — streams scraper progress to UI
+│   └── components/
+│       ├── upload.py            # Upload Data page (Connect TikTok + CSV upload)
+│       ├── dashboard.py         # Sentiment overview, keyword chart
+│       ├── insights.py          # Key findings, keyword clusters
+│       ├── recommendations.py   # What to post more, what to improve, content ideas
+│       └── profile.py           # Creator profile, engagement stats, analysis history
+├── nlp/
+│   ├── preprocessor.py          # Text cleaning pipeline
+│   ├── sentiment.py             # VADER sentiment classification
+│   └── keywords.py              # TF-IDF keyword extraction and clustering
+├── data/
+│   ├── raw/
+│   │   └── sample_comments.csv  # 50-comment demo dataset
+│   ├── videos_merged.csv        # 161 videos with metadata and category labels
+│   └── comments_*.csv           # Scraped comments (generated by scraper)
+├── .streamlit/
+│   └── config.toml              # Theme colour, privacy settings
+├── scrape_playwright.py         # Full scraper: videos + comments (standalone)
+├── collect_comments.py          # Comments-only scraper with --limit flag
+├── walking_skeleton.py          # End-to-end pipeline proof (no UI)
+├── debug_network.py             # Network request logger (used during development)
+├── config.py                    # Scraper configuration (delays, paths, username)
+├── NLP_Tiktok.ipynb             # EDA notebook with charts (Section C)
+├── requirements.txt             # Python dependencies
 └── README.md
 ```
 
 ---
 
-## Data Collection Setup
+## Data Collection
 
-The scraper collects videos and comments from your public TikTok account and saves them to `data/videos_<timestamp>.csv` and `data/comments_<timestamp>.csv`.
+There are two ways to get data into the app.
 
-### 1 — Create and activate a virtual environment
+### Option 1 — In-app scraper (recommended)
 
+Log in to the app, go to **Upload Data → Connect TikTok**, select a scrape depth, and click **Start Scraping**. A real browser window opens, you log in to TikTok once, and the app collects your videos and comments automatically. A live progress bar tracks each video. When complete, the NLP pipeline runs and the dashboard loads without any further action.
+
+Scrape modes:
+
+| Mode | Videos scraped | Estimated time |
+|------|---------------|----------------|
+| Quick | Last 20 | ~8 minutes |
+| Standard | Last 50 | ~20 minutes |
+| Full | All videos | ~55 minutes |
+
+The login session is saved to `browser_state.json` after the first run. Every subsequent scrape reuses it — no login required.
+
+### Option 2 — Standalone scraper scripts
+
+Run these from the project root directory.
+
+**Collect videos only:**
 ```bash
-# Windows (PowerShell)
-python -m venv .venv
-.venv\Scripts\Activate.ps1
+python scrape_playwright.py
 ```
 
-### 2 — Install Python dependencies
-
+**Collect comments for existing videos:**
 ```bash
-pip install -r requirements.txt
+# All videos
+python collect_comments.py
+
+# Limit to most recent N videos (for testing)
+python collect_comments.py --limit 20
 ```
 
-### 3 — Install Playwright browsers
-
-```bash
-playwright install chromium
-```
-
-### 4 — First-run authentication
-
-On the first run the script opens a real browser window so you can log in to TikTok manually. After you log in, press **Enter** in the terminal. The session token is saved to `session.json` and reused on every run after that.
-
-```bash
-python scrape.py
-```
-
-> **If the session expires** (TikTok rotates tokens periodically), delete `session.json` and run the script again to re-authenticate.
-
-### 5 — Resume after a crash
-
-If the script is interrupted, just re-run it. It reads the existing `videos_*.csv`, skips any videos already collected, and appends new rows to the same files.
+Both scripts save output to `data/` and resume automatically if interrupted.
 
 ### Configuration
 
-All tuneable settings live in `config.py`:
+All settings live in `config.py`:
 
 | Setting | Default | What it does |
 |---------|---------|--------------|
-| `TIKTOK_USERNAME` | `"ichbinnelo"` | Account to scrape |
-| `DELAY_BETWEEN_VIDEOS` | `2.5` s | Pause between videos |
+| `TIKTOK_USERNAME` | `"ichbinnelo"` | TikTok account to scrape |
+| `DELAY_BETWEEN_VIDEOS` | `2.5` s | Pause between videos (anti-bot) |
 | `MAX_COMMENTS_PER_VIDEO` | `None` | Cap per video (`None` = all) |
-| `BACKOFF_SECONDS` | `[30, 60, 120]` | Retry wait times on HTTP 429 |
 
 ### Troubleshooting
 
-- **`msToken` not found after login** — make sure you can see your TikTok feed, then press Enter. Try refreshing the TikTok page before pressing Enter.
-- **TikTokApi import error** — run `pip install --upgrade TikTokApi` and retry.
-- **Rate limited (HTTP 429)** — increase `DELAY_BETWEEN_VIDEOS` in `config.py` and wait ~30 minutes before re-running.
-- **API completely broken** — TikTok sometimes changes its internal API. If `scrape.py` fails persistently, check the [TikTokApi releases](https://github.com/davidteather/TikTok-Api/releases) for a patch version update.
+- **0 comments collected** — TikTok's comment API only fires after the comment icon is clicked. This is handled automatically by `collect_comments.py`. If you are using an older version, add `await page.click('[data-e2e="comment-icon"]')` after page load.
+- **Session expired** — delete `browser_state.json` and run the scraper again to re-authenticate.
+- **Rate limited** — increase `DELAY_BETWEEN_VIDEOS` in `config.py` and wait 30 minutes before retrying.
+
+---
+
+### Development Log — June 2026
+
+#### Walking Skeleton and End-to-End Integration
+
+A `walking_skeleton.py` script was written to prove the full pipeline works without a UI. It loads the real scraped CSV, runs all three NLP modules in sequence, and prints results to the terminal. Proved that 1,211 comments can be processed end-to-end in under 5 seconds:
+
+```
+STEP 1 - Loading raw data...       1211 comments loaded from @ichbinnelo
+STEP 2 - Preprocessing...          783 comments remain after cleaning
+STEP 3 - Sentiment analysis...     Positive: 30.0%  Neutral: 67.3%  Negative: 2.7%
+STEP 4 - Keyword extraction...     Top 5: ['teamwork', 'support', 'follow', 'love']
+ANALYSIS COMPLETE
+```
+
+#### In-App TikTok Scraper
+
+The Upload Data page was redesigned with two tabs: **Connect TikTok** and **Upload CSV**.
+
+The Connect TikTok tab integrates `collect_comments.py` directly into the app via `app/scraper_runner.py`. When a user clicks Start Scraping, the scraper runs as a background subprocess. Its stdout is read line by line and fed into a Streamlit progress bar and live log panel. When scraping completes, the pipeline runs automatically and the dashboard loads — no user action needed.
+
+The scraper supports three modes (Quick / Standard / Full) controlled by a `--limit` flag added to `collect_comments.py`. If a saved `browser_state.json` session exists, no login is required.
+
+**`app/scraper_runner.py`** — key responsibilities:
+- Detects whether a saved TikTok session exists and surfaces this in the UI
+- Launches `collect_comments.py` as a subprocess with the selected limit
+- Yields `(progress_float, message)` tuples by parsing `[current/total]` lines from stdout
+- Detects when the subprocess exits and returns the path of the generated CSV
+
+#### Real Data Connected to All Pages
+
+All five Streamlit pages were updated to read exclusively from `st.session_state`. On startup, the app detects the latest `comments_*.csv` in the `data/` folder and runs the pipeline automatically — no manual upload needed. Engagement / Growth videos are filtered before analysis to prevent follow-train comments from dominating keyword output. Translated comments (previously dropped by the language filter) are re-labelled as English so they are included in the analysis.
+
+Pages with no data loaded now show a clean call-to-action card instead of a generic warning.
+
+#### UI Fixes
+
+- Theme colour updated from Streamlit's default red to `#4361EE` via `.streamlit/config.toml` `primaryColor` — affects all buttons app-wide
+- Login/Register radio buttons removed from the sidebar; navigation between auth pages uses inline HTML links with `target="_top"` to prevent new-tab behaviour
+- "NLP Course Project · Spring 2026" footer removed from sidebar
+- Input field borders made visible using `data-baseweb="input"` CSS targeting
+- Creator profile now shows the registered TikTok handle (from the user account) instead of the most common commenter from the dataset
+- All pages show a clear centred prompt card when no analysis has been run yet, rather than an empty or mockup state
 
 ---
 

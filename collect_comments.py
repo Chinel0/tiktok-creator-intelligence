@@ -128,6 +128,12 @@ async def collect_comments_for_video(context, video_id: str, url: str) -> list:
 
 
 async def main():
+    import argparse
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--limit", type=int, default=None,
+                        help="Max number of videos to scrape (most recent first)")
+    args = parser.parse_args()
+
     # Find the most recent videos CSV
     videos_csv = find_latest_videos_csv()
     if not videos_csv:
@@ -135,6 +141,11 @@ async def main():
         return
 
     videos = load_video_urls(videos_csv)
+
+    # Apply limit — take most recent N videos
+    if args.limit:
+        videos = videos[:args.limit]
+
     print(f"Loaded {len(videos)} video URLs from {videos_csv}")
 
     # Output file

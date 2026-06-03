@@ -65,18 +65,45 @@ st.markdown("""
         color: #6366f1;
     }
 
-    /* Primary button colour */
-    .stButton > button[kind="primary"] {
-        background-color: #6366f1;
-        border: none;
-        color: white;
+    /* ── Brand blue to match Figma prototype ── */
+    :root { --brand: #4361EE; --brand-dark: #3451D1; }
+
+    /* ALL primary buttons — Streamlit 1.30+ uses data-testid */
+    [data-testid="baseButton-primary"],
+    [data-testid="baseButton-primary"]:focus {
+        background-color: #4361EE !important;
+        border: none !important;
+        color: white !important;
+        border-radius: 8px !important;
     }
-    .stButton > button[kind="primary"]:hover {
-        background-color: #4f46e5;
+    [data-testid="baseButton-primary"]:hover {
+        background-color: #3451D1 !important;
     }
+
+    /* Sidebar TikTok title colour */
+    [data-testid="stSidebar"] h2 { color: #4361EE !important; }
 
     /* Remove default padding on metric labels */
     [data-testid="stMetricLabel"] p { font-weight: 600; }
+
+    /* Clear visible borders on input fields */
+    div[data-baseweb="input"],
+    div[data-baseweb="textarea"] {
+        border: 1.5px solid #d1d5db !important;
+        border-radius: 8px !important;
+        background-color: white !important;
+    }
+    div[data-baseweb="input"]:focus-within,
+    div[data-baseweb="textarea"]:focus-within {
+        border-color: #4361EE !important;
+        box-shadow: 0 0 0 3px rgba(67,97,238,0.15) !important;
+    }
+    /* Remove the inner input's own border so only the wrapper shows */
+    div[data-baseweb="input"] input,
+    div[data-baseweb="textarea"] textarea {
+        border: none !important;
+        background-color: transparent !important;
+    }
 </style>
 """, unsafe_allow_html=True)
 
@@ -101,12 +128,21 @@ for key, default in _defaults.items():
     if key not in st.session_state:
         st.session_state[key] = default
 
+# Handle ?go=register / ?go=login links from auth forms
+_go = st.query_params.get("go", "")
+if _go == "register":
+    st.session_state.auth_page = "register"
+    st.query_params.clear()
+elif _go == "login":
+    st.session_state.auth_page = "login"
+    st.query_params.clear()
+
 
 # ── Sidebar ───────────────────────────────────────────────────────────────────
 with st.sidebar:
     st.markdown(
-        """<h2 style="color:#6366f1; margin-bottom:4px;">🎵 TikTok</h2>
-           <h3 style="margin-top:0; color:#1f2937;">Creator Intelligence</h3>""",
+        """<h2 style="color:#4361EE; margin-bottom:4px;">TikTok</h2>
+           <h3 style="margin-top:0; color:#1f2937;">Intelligence</h3>""",
         unsafe_allow_html=True,
     )
     st.markdown("---")
@@ -115,10 +151,10 @@ with st.sidebar:
         # ── Logged-in sidebar ──────────────────────────────────────────────
         uname = st.session_state.user['username']
         st.markdown(
-            f"""<div style="background:#ede9fe; border-radius:8px; padding:10px 14px;
+            f"""<div style="background:#eef1fd; border-radius:8px; padding:10px 14px;
                 margin-bottom:16px;">
                 <span style="font-size:0.85rem; color:#6b7280;">Logged in as</span><br>
-                <strong style="color:#6366f1;">@{uname}</strong>
+                <strong style="color:#4361EE;">@{uname}</strong>
             </div>""",
             unsafe_allow_html=True,
         )
@@ -137,15 +173,8 @@ with st.sidebar:
             st.rerun()
 
     else:
-        # ── Logged-out sidebar ─────────────────────────────────────────────
-        page = st.radio(
-            "Account",
-            ["Login", "Register"],
-            key="nav_radio",
-        )
-
-    st.markdown("---")
-    st.caption("NLP Course Project · Spring 2026")
+        # Logged-out — no nav shown in sidebar; auth controlled by session state
+        page = st.session_state.get('auth_page', 'login')
 
 
 # ── Auth pages ────────────────────────────────────────────────────────────────
@@ -172,7 +201,12 @@ def _show_login():
             else:
                 st.error("Incorrect username or password.")
 
-    st.markdown("Don't have an account? Switch to **Register** in the sidebar.")
+    st.markdown(
+        "Don't have an account? "
+        '<a href="?go=register" target="_top" style="color:#4361EE; font-weight:600; text-decoration:none;">'
+        "Register here</a>",
+        unsafe_allow_html=True,
+    )
 
 
 def _show_register():
@@ -196,9 +230,18 @@ def _show_register():
         else:
             ok, msg = register_user(username, password, tiktok_hdl)
             if ok:
-                st.success(msg + " Switch to Login in the sidebar.")
+                st.success(msg)
+                st.session_state.auth_page = 'login'
+                st.rerun()
             else:
                 st.error(msg)
+
+    st.markdown(
+        "Already have an account? "
+        '<a href="?go=login" target="_top" style="color:#4361EE; font-weight:600; text-decoration:none;">'
+        "Login here</a>",
+        unsafe_allow_html=True,
+    )
 
 
 # ── Page router ───────────────────────────────────────────────────────────────
@@ -214,7 +257,7 @@ if st.session_state.user:
     elif page == "Recommendations":
         show_recommendations_page()
 else:
-    if page == "Login":
-        _show_login()
-    else:
+    if st.session_state.get('auth_page', 'login') == 'register':
         _show_register()
+    else:
+        _show_login()

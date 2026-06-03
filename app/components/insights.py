@@ -8,7 +8,7 @@ Deeper analysis view showing:
 import streamlit as st
 from nlp.keywords import CLUSTER_LABELS
 
-C_PRIMARY  = '#6366f1'
+C_PRIMARY  = '#4361EE'
 C_POSITIVE = '#10b981'
 C_NEGATIVE = '#ef4444'
 C_NEUTRAL  = '#8b5cf6'
@@ -41,7 +41,20 @@ def show_insights_page():
     clusters = st.session_state.get('clusters')
 
     if df is None or summary is None:
-        st.warning("No data loaded yet. Please go to **Upload Data** first.")
+        st.title("Insights")
+        st.markdown("<br>", unsafe_allow_html=True)
+        st.markdown(
+            """<div style="background:white; border-radius:14px; padding:40px;
+                box-shadow:0 2px 10px rgba(0,0,0,0.08); text-align:center; max-width:500px; margin:0 auto;">
+                <div style="font-size:3rem; margin-bottom:16px;">💡</div>
+                <h3 style="color:#1f2937; margin-bottom:8px;">No insights yet</h3>
+                <p style="color:#6b7280; margin-bottom:0;">
+                    Go to <strong>Upload Data</strong> and click
+                    <strong>Load &amp; Analyse Existing Data</strong> to unlock your insights.
+                </p>
+            </div>""",
+            unsafe_allow_html=True,
+        )
         return
 
     st.title("Insights")
