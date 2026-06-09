@@ -54,7 +54,10 @@ def analyze_sentiment(df: pd.DataFrame) -> tuple:
     sia = SentimentIntensityAnalyzer()
     df  = df.copy()
 
-    results = df['clean_comment'].apply(lambda t: _classify(t, sia))
+    # Use original text so VADER can read emojis, capitalisation, and punctuation.
+    # clean_comment is kept for TF-IDF keyword extraction only.
+    text_col = 'Comment Text' if 'Comment Text' in df.columns else 'clean_comment'
+    results = df[text_col].apply(lambda t: _classify(t, sia))
     df['sentiment']       = results.apply(lambda x: x[0])
     df['sentiment_score'] = results.apply(lambda x: x[1])
 

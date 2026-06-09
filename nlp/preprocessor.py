@@ -53,8 +53,10 @@ def preprocess(df: pd.DataFrame) -> pd.DataFrame:
     # Step 2: clean text
     df['clean_comment'] = df['Comment Text'].apply(clean_text)
 
-    # Step 3: drop too-short comments (noise / emoji-only)
-    df = df[df['clean_comment'].str.len() >= 3]
+    # Step 3: drop only rows where the original comment is also empty.
+    # Emoji-only comments have clean_comment == "" but still carry sentiment,
+    # so we keep them as long as the original text has any content.
+    df = df[df['Comment Text'].fillna('').str.strip().str.len() >= 1]
 
     df = df.reset_index(drop=True)
     return df
