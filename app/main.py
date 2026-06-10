@@ -1,6 +1,6 @@
 """
 main.py  —  TikTok Creator Intelligence
-Entry point for the Streamlit app with top navigation bar.
+Mobile-first design with bottom navigation bar.
 """
 
 import os
@@ -39,78 +39,86 @@ st.markdown("""
     /* Hide default sidebar */
     [data-testid="stSidebar"] { display: none; }
 
-    /* TOP NAVIGATION BAR */
-    .nav-bar {
-        background-color: #4361EE;
-        padding: 16px 24px;
+    /* TOP HEADER - Minimal */
+    .top-header {
+        background-color: white;
+        padding: 12px 20px;
         display: flex;
         justify-content: space-between;
         align-items: center;
-        margin-bottom: 24px;
-        border-radius: 0;
+        border-bottom: 1px solid #e2e8f0;
+        margin-bottom: 16px;
     }
 
-    .nav-brand {
-        font-size: 20px;
+    .brand-name {
+        font-size: 18px;
         font-weight: 700;
-        color: white;
-        display: flex;
-        align-items: center;
-        gap: 12px;
-    }
-
-    .nav-brand-text {
-        display: flex;
-        flex-direction: column;
-        gap: 2px;
-    }
-
-    .nav-brand-main { font-size: 18px; }
-    .nav-brand-sub { font-size: 12px; opacity: 0.9; }
-
-    /* Navigation tabs (top) */
-    .nav-tabs {
-        display: flex;
-        gap: 8px;
-        flex-wrap: wrap;
-        align-items: center;
-    }
-
-    .nav-tab {
-        padding: 8px 14px;
-        border-radius: 6px;
-        font-size: 14px;
-        font-weight: 500;
-        cursor: pointer;
-        color: white;
-        background-color: rgba(255, 255, 255, 0.2);
-        border: none;
-        transition: all 0.2s;
-    }
-
-    .nav-tab:hover {
-        background-color: rgba(255, 255, 255, 0.3);
-    }
-
-    .nav-tab.active {
-        background-color: white;
         color: #4361EE;
     }
 
-    .nav-logout {
-        padding: 8px 16px;
-        border-radius: 6px;
-        font-size: 14px;
-        font-weight: 500;
+    .user-avatar {
+        width: 36px;
+        height: 36px;
+        border-radius: 50%;
+        background-color: #4361EE;
+        display: flex;
+        align-items: center;
+        justify-content: center;
         color: white;
-        background-color: rgba(255, 255, 255, 0.2);
-        border: none;
-        cursor: pointer;
-        transition: all 0.2s;
+        font-weight: 600;
+        font-size: 14px;
     }
 
-    .nav-logout:hover {
-        background-color: rgba(255, 255, 255, 0.3);
+    /* BOTTOM NAVIGATION BAR */
+    .bottom-nav {
+        position: fixed;
+        bottom: 0;
+        left: 0;
+        right: 0;
+        background-color: white;
+        border-top: 1px solid #e2e8f0;
+        padding: 8px 0;
+        display: flex;
+        justify-content: space-around;
+        align-items: center;
+        z-index: 100;
+    }
+
+    .nav-button {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 4px;
+        padding: 8px 12px;
+        border: none;
+        background: none;
+        cursor: pointer;
+        font-size: 12px;
+        color: #6b7280;
+        transition: all 0.2s;
+        flex: 1;
+        text-align: center;
+    }
+
+    .nav-button.active {
+        background-color: #4361EE;
+        color: white;
+        border-radius: 8px;
+        font-weight: 600;
+    }
+
+    .nav-button:hover:not(.active) {
+        color: #4361EE;
+    }
+
+    .nav-icon {
+        font-size: 20px;
+    }
+
+    /* Add padding to main content to avoid overlap with bottom nav */
+    .main-content {
+        padding-bottom: 80px;
+        padding: 16px 20px 80px 20px;
     }
 
     /* Primary buttons */
@@ -146,11 +154,10 @@ st.markdown("""
         background-color: transparent !important;
     }
 
-    /* Content padding */
-    .main-content {
-        padding: 0 24px;
-        max-width: 1400px;
-        margin: 0 auto;
+    /* Hide overflow for bottom nav */
+    .stApp > [data-testid="stVerticalBlock"] {
+        overflow-y: auto;
+        max-height: 100vh;
     }
 </style>
 """, unsafe_allow_html=True)
@@ -184,7 +191,7 @@ elif _go == "login":
     st.query_params.clear()
 
 
-# ── AUTH PAGES (when not logged in) ───────────────────────────────────────────
+# ── AUTH PAGES ────────────────────────────────────────────────────────────────
 
 def _show_login():
     st.title("Welcome Back")
@@ -250,43 +257,21 @@ def _show_register():
     )
 
 
-# ── MAIN APP (when logged in) ─────────────────────────────────────────────────
+# ── MAIN APP ──────────────────────────────────────────────────────────────────
 
 if st.session_state.user:
-    # Top navigation bar
-    col_brand, col_nav, col_user = st.columns([2, 3, 1])
+    # TOP HEADER
+    st.markdown(
+        f"""
+        <div class="top-header">
+            <div class="brand-name">TikTok Intelligence</div>
+            <div class="user-avatar">{st.session_state.user['username'][0].upper()}</div>
+        </div>
+        """,
+        unsafe_allow_html=True
+    )
 
-    with col_brand:
-        st.markdown(
-            '<div class="nav-brand"><div class="nav-brand-text"><div class="nav-brand-main">TikTok</div><div class="nav-brand-sub">Intelligence</div></div></div>',
-            unsafe_allow_html=True
-        )
-
-    with col_nav:
-        pages = ["Upload Data", "Dashboard", "Insights", "Recommendations", "User Profile"]
-
-        # Create buttons for each page
-        cols = st.columns(len(pages))
-        for i, page_name in enumerate(pages):
-            with cols[i]:
-                if st.button(
-                    page_name,
-                    key=f"nav_{page_name}",
-                    use_container_width=True,
-                ):
-                    st.session_state.current_page = page_name
-                    st.rerun()
-
-    with col_user:
-        if st.button("Logout", use_container_width=True, key="logout_btn"):
-            st.session_state.user = None
-            st.session_state.auth_page = 'login'
-            st.session_state._analysis_saved = False
-            st.rerun()
-
-    st.markdown("---")
-
-    # Main content area
+    # MAIN CONTENT
     st.markdown('<div class="main-content">', unsafe_allow_html=True)
 
     # Route to appropriate page
@@ -302,6 +287,44 @@ if st.session_state.user:
         show_profile_page()
 
     st.markdown('</div>', unsafe_allow_html=True)
+
+    # BOTTOM NAVIGATION BAR
+    pages = [
+        ("📤", "Upload Data"),
+        ("📊", "Dashboard"),
+        ("💡", "Insights"),
+        ("⭐", "Recommendations"),
+        ("👤", "User Profile"),
+    ]
+
+    st.markdown("---")
+
+    # Create bottom nav buttons
+    nav_cols = st.columns(len(pages))
+
+    for idx, (icon, page_name) in enumerate(pages):
+        with nav_cols[idx]:
+            is_active = st.session_state.current_page == page_name
+            btn_color = "#4361EE" if is_active else "white"
+            text_color = "white" if is_active else "#4361EE"
+            border_color = "#4361EE" if is_active else "#e2e8f0"
+
+            if st.button(
+                f"{icon}\n{page_name}",
+                key=f"nav_{page_name}",
+                use_container_width=True,
+            ):
+                st.session_state.current_page = page_name
+                st.rerun()
+
+    st.markdown("---")
+
+    # Logout button
+    if st.button("Logout", use_container_width=True, key="logout_btn"):
+        st.session_state.user = None
+        st.session_state.auth_page = 'login'
+        st.session_state._analysis_saved = False
+        st.rerun()
 
 else:
     # Not logged in — show auth pages
