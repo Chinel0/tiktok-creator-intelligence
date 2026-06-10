@@ -247,12 +247,13 @@ def _show_login():
             else:
                 st.error("Incorrect username or password.")
 
-    st.markdown(
-        "Don't have an account? "
-        '<a href="?go=register" target="_top" style="color:#4361EE; font-weight:600; text-decoration:none;">'
-        "Register here</a>",
-        unsafe_allow_html=True,
-    )
+    col1, col2 = st.columns([3, 1])
+    with col1:
+        st.markdown("Don't have an account?")
+    with col2:
+        if st.button("Register here", key="login_register_btn"):
+            st.session_state.auth_page = "register"
+            st.rerun()
 
 
 def _show_register():
@@ -282,12 +283,13 @@ def _show_register():
             else:
                 st.error(msg)
 
-    st.markdown(
-        "Already have an account? "
-        '<a href="?go=login" target="_top" style="color:#4361EE; font-weight:600; text-decoration:none;">'
-        "Login here</a>",
-        unsafe_allow_html=True,
-    )
+    col1, col2 = st.columns([3, 1])
+    with col1:
+        st.markdown("Already have an account?")
+    with col2:
+        if st.button("Login here", key="register_login_btn"):
+            st.session_state.auth_page = "login"
+            st.rerun()
 
 
 # ── Page router ───────────────────────────────────────────────────────────────
