@@ -58,10 +58,12 @@ def _idea_card(title: str, confidence: str, description: str):
 
 
 def show_recommendations_page():
-    df       = st.session_state.get('df_analyzed')
-    summary  = st.session_state.get('summary')
-    keywords = st.session_state.get('keywords')
-    clusters = st.session_state.get('clusters')
+    df             = st.session_state.get('df_analyzed')
+    summary        = st.session_state.get('summary')
+    keywords       = st.session_state.get('keywords')
+    clusters       = st.session_state.get('clusters')
+    niche_analysis = st.session_state.get('niche_analysis')
+    requests       = st.session_state.get('requests')
 
     if df is None or summary is None:
         st.title("Recommendations")
@@ -83,7 +85,9 @@ def show_recommendations_page():
     st.title("Recommendations")
     st.markdown("Actionable next steps based on what your audience is telling you.")
 
-    keep, improve, ideas = _generate_recommendations(summary, keywords, clusters)
+    keep, improve, ideas = _generate_recommendations(
+        summary, keywords, clusters, niche_analysis, requests
+    )
 
     # ── What to Post More ─────────────────────────────────────────────────────
     st.markdown("### What to Post More")
@@ -108,103 +112,182 @@ def show_recommendations_page():
 
 
 # ── Recommendation generator ──────────────────────────────────────────────────
+# Every card is built from measured data (niche analyzer + request
+# extractor). No card is shown unless the data behind it exists, and
+# every reason cites the actual numbers so creators can verify it.
 
-def _generate_recommendations(summary: dict, keywords: list, clusters: dict) -> tuple:
+def _generate_recommendations(summary: dict, keywords: list, clusters: dict,
+                              niche_analysis: dict | None = None,
+                              requests: list | None = None) -> tuple:
     """
     Build three lists of recommendations from the analysis results.
     Returns (keep_list, improve_list, ideas_list).
-    All recommendations are rule-based — no external API needed.
+    All recommendations are rule-based and evidence-cited — no external API.
     """
     keep    = []
     improve = []
     ideas   = []
 
-    pos = summary.get('positive', 0)
-    neg = summary.get('negative', 0)
+    requests = requests or []
+    neg      = summary.get('negative', 0)
+    neutral  = summary.get('neutral', 0)
 
-    pos_words  = clusters.get('positive_reactions',   []) if clusters else []
-    imp_words  = clusters.get('improvement_requests', []) if clusters else []
-    cont_words = clusters.get('content_requests',     []) if clusters else []
-    top_kws    = [k[0] for k in keywords[:5]] if keywords else []
+    na      = niche_analysis or {}
+    niches  = na.get('niches', {})
+    best    = na.get('best')
+    weakest = na.get('weakest')
+    ratio   = na.get('engagement_ratio')
 
     # ── What to post more ──────────────────────────────────────────────────
-    if pos >= 50:
+
+    # 1. The winner niche, with numbers a creator can check.
+    if best and weakest and ratio and ratio >= 1.5:
+        b, w = niches[best], niches[weakest]
+        reason = (f'Your {best} videos average {b["comments_per_video"]} comments each — '
+                  f'{ratio}x more than {weakest} ({w["comments_per_video"]}).')
+        if na.get('views_ratio') and b.get('avg_views') and w.get('avg_views'):
+            reason += (f' They also pull {na["views_ratio"]}x the views '
+                       f'({b["avg_views"]:,.0f} vs {w["avg_views"]:,.0f} on average).')
+
+        best_reqs = [r for r in requests if r.get('top_video_type') == best and r['count'] > 1]
+        if best_reqs:
+            tip = (f'Make {best} your main lane. Next upload: answer '
+                   f'"{best_reqs[0]["request"]}" — {best_reqs[0]["count"]} viewers '
+                   f'already asked for it.')
+        else:
+            tip = f'Make {best} your main lane — aim for at least half of your next 10 uploads.'
+
+        keep.append({'title': f'Double Down on {best}', 'reason': reason, 'tip': tip})
+
+    # 2. Honest card when there is no clear winner.
+    elif best and ratio and ratio < 1.5:
+        b = niches[best]
         keep.append({
-            'title':  'Keep Posting This Type of Content',
-            'reason': f'{pos}% of your audience reacted positively — this is working.',
-            'tip':    'Double down on the format and topics that generated these reactions.',
+            'title':  'No Breakout Niche Yet — Your Audience Likes It All',
+            'reason': (f'Your top niche ({best}, {b["comments_per_video"]} comments/video) '
+                       f'performs about the same as the rest ({ratio}x difference).'),
+            'tip':    ('Run a 4-week experiment: two weeks focused on one niche, two on '
+                       'another, then compare comments per video.'),
         })
 
-    if pos_words:
-        sample = ', '.join(pos_words[:3])
-        keep.append({
-            'title':  f'Lean Into "{pos_words[0].title()}" Content',
-            'reason': f'Your audience frequently uses words like {sample}, signalling strong appreciation.',
-            'tip':    f'Create more videos that feature {pos_words[0]}-related themes.',
-        })
-
-    if cont_words:
-        keep.append({
-            'title':  'Respond to Content Requests',
-            'reason': f'Your viewers are asking for "{cont_words[0]}" type of content.',
-            'tip':    'Fulfilling explicit requests builds loyalty and boosts engagement.',
-        })
+    # 3. Where the audience mood is best.
+    most_loved = na.get('most_loved')
+    if most_loved and most_loved != best:
+        m = niches[most_loved]
+        if m['positive_pct'] >= 40 and most_loved == weakest and ratio and ratio >= 1.5:
+            # Loved but quiet: happiest audience AND lowest volume. One
+            # nuanced card instead of two contradictory ones.
+            keep.append({
+                'title':  f'{most_loved}: Loved but Quiet',
+                'reason': (f'{m["positive_pct"]}% of comments on {most_loved} are positive '
+                           f'— your happiest audience — but it only gets '
+                           f'{m["comments_per_video"]} comments per video, your lowest.'),
+                'tip':    (f'The niche makes fans, not conversation. Keep it, but add a '
+                           f'question or hook from your {best} videos to wake up the '
+                           f'comment section.'),
+            })
+        elif m['positive_pct'] >= 40:
+            keep.append({
+                'title':  f'Your {most_loved} Audience Is the Happiest',
+                'reason': (f'{m["positive_pct"]}% of comments on {most_loved} videos are '
+                           f'positive ({m["passion_pct"]}% outright passionate) — the best '
+                           f'mood anywhere on your account.'),
+                'tip':    (f'Blend {most_loved} elements into your bigger formats, or post '
+                           f'it when you need a guaranteed win with your core fans.'),
+            })
 
     # ── What to improve ────────────────────────────────────────────────────
-    if neg >= 20:
-        improve.append({
-            'title':  'Address the Negative Feedback',
-            'reason': f'{neg}% of comments are negative — this is higher than average.',
-            'tip':    'Read through the negative comments and look for recurring themes to fix.',
-        })
 
+    # 1. A niche where negativity concentrates.
+    if niches:
+        sour = [(t, m) for t, m in niches.items()
+                if m['scraped_comments'] >= 30 and m['negative_pct'] >= max(10, neg * 1.5)]
+        if sour:
+            t, m = max(sour, key=lambda x: x[1]['negative_pct'])
+            improve.append({
+                'title':  f'Check the Comments on {t}',
+                'reason': (f'{m["negative_pct"]}% of comments there are negative, vs '
+                           f'{neg}% across your whole account.'),
+                'tip':    ('Read the recent negative comments on those videos — recurring '
+                           'complaints usually point at one fixable thing.'),
+            })
+
+    # 2. Concrete production complaints (audio, captions, length...).
+    imp_words = clusters.get('improvement_requests', []) if clusters else []
     if imp_words:
-        sample = ', '.join(imp_words[:3])
         improve.append({
-            'title':  'Act on Improvement Requests',
-            'reason': f'Keywords like "{sample}" appear in your comments, suggesting specific changes are wanted.',
-            'tip':    'Acknowledge these requests in a video or try incorporating the feedback.',
+            'title':  'Viewers Mention Fixable Issues',
+            'reason': (f'Words like {", ".join(imp_words[:3])} keep coming up in your '
+                       f'comments.'),
+            'tip':    ('These are production issues, not content issues — audio, captions '
+                       'and length are quick wins you can fix on the very next upload.'),
         })
 
-    if summary.get('neutral', 0) >= 40:
+    # 3. Passive comment section.
+    if neutral >= 55:
         improve.append({
-            'title':  'Convert Neutral Viewers to Fans',
-            'reason': f'{summary["neutral"]}% of comments are neutral — these are people on the fence.',
-            'tip':    'Add stronger calls to action and more personality to pull neutral viewers in.',
+            'title':  'Mostly Passive Comments',
+            'reason': (f'{neutral}% of your comments are neutral — lots of quick reactions '
+                       f'and follow-trades, not much real conversation.'),
+            'tip':    ('End each video with one specific question. Viewers comment when '
+                       'they are asked something concrete.'),
         })
 
-    # ── Content ideas ──────────────────────────────────────────────────────
-    if top_kws:
-        ideas.append({
-            'title':       f'Deep Dive: {top_kws[0].title()} Content',
-            'confidence':  'High',
-            'description': f'Your top keyword is "{top_kws[0]}" — create a dedicated video series around this topic.',
+    # 4. The weakest niche, when the gap is big enough to act on.
+    #    (Skipped when it is also the most loved - the 'Loved but Quiet'
+    #    card above already covers that nuance.)
+    if best and weakest and ratio and ratio >= 2 and weakest != most_loved:
+        w = niches[weakest]
+        improve.append({
+            'title':  f'Rethink {weakest}',
+            'reason': (f'{weakest} averages {w["comments_per_video"]} comments per video '
+                       f'across {w["videos"]} videos — your weakest performer.'),
+            'tip':    (f'Either cut its share of your schedule or borrow what works in '
+                       f'{best}: same hook style, same topics, same energy.'),
         })
 
-    if cont_words:
+    # ── Content ideas: built from what viewers literally asked for ─────────
+    for r in requests[:4]:
+        if r['count'] >= 10:
+            conf = 'High'
+        elif r['count'] >= 4:
+            conf = 'Medium'
+        else:
+            conf = 'Low'
+
+        where = f' on your {r["top_video_type"]} videos' if r.get('top_video_type') else ''
+        example = (r['examples'][0][:70] + '…') if len(r['examples'][0]) > 70 else r['examples'][0]
+
+        if r['count'] == 1:
+            desc = (f'A viewer asked: "{example}"{where}. Small accounts grow by '
+                    f'answering every question on camera.')
+        else:
+            desc = f'Asked {r["count"]} times{where}. Example: "{example}"'
+
         ideas.append({
-            'title':       f'Tutorial Series on {cont_words[0].title()}',
-            'confidence':  'High',
-            'description': 'Your audience is asking for tutorials. A step-by-step series tends to perform well.',
+            'title':       f'Answer: "{r["request"][:55]}"',
+            'confidence':  conf,
+            'description': desc,
         })
 
-    ideas.append({
-        'title':       'Q&A Video Using Real Comments',
-        'confidence':  'Medium',
-        'description': 'Use the questions your audience is already asking as the script for a Q&A video.',
-    })
-
-    if neg >= 15:
+    # One topical deep-dive from the most distinctive keyword.
+    if keywords:
+        kw = keywords[0][0]
         ideas.append({
-            'title':       'Response Video Addressing Common Concerns',
+            'title':       f'Deep Dive: {kw.title()}',
             'confidence':  'Medium',
-            'description': 'Directly addressing criticism in a transparent video builds trust and often goes viral.',
+            'description': (f'"{kw}" is the most distinctive word in your comment section — '
+                            f'your audience already associates you with it. A dedicated '
+                            f'series builds on proven interest.'),
         })
 
-    ideas.append({
-        'title':       'Behind-the-Scenes or Process Video',
-        'confidence':  'Low',
-        'description': 'Audiences are curious about how things are made. A "how I create my content" video can boost engagement.',
-    })
+    # Last resort so the section is never empty.
+    if not ideas:
+        ideas.append({
+            'title':       'Q&A Video Using Real Comments',
+            'confidence':  'Low',
+            'description': ('Not enough repeated requests in this dataset yet. Collect '
+                            'questions from your next few uploads and answer them on camera.'),
+        })
 
     return keep, improve, ideas

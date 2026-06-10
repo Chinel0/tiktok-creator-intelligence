@@ -60,7 +60,8 @@ def _normalize_key(cleaned: str) -> str:
     return re.sub(r'\s+', ' ', key).strip()
 
 
-def extract_requests(df: pd.DataFrame, min_count: int = 2, top_n: int = 10) -> list:
+def extract_requests(df: pd.DataFrame, min_count: int = 2, top_n: int = 10,
+                     fallback_to_questions: bool = True) -> list:
     """
     Extract repeated explicit requests from a comments dataframe.
 
@@ -132,6 +133,14 @@ def extract_requests(df: pd.DataFrame, min_count: int = 2, top_n: int = 10) -> l
         })
 
     results.sort(key=lambda r: r['count'], reverse=True)
+
+    # No repeated asks at all (common for small/engagement-trade accounts):
+    # fall back to individual questions, clearly identifiable by count == 1.
+    if not results and min_count > 1 and fallback_to_questions:
+        singles = extract_requests(df, min_count=1, top_n=top_n,
+                                   fallback_to_questions=False)
+        return [r for r in singles if r['is_question']][:5]
+
     return results[:top_n]
 
 

@@ -92,7 +92,10 @@ def run_dataset(name: str, comments_file: str, videos_file: str | None,
     df_clean = preprocess(df)
     df_analyzed, summary = analyze_sentiment(df_clean)
     keywords, clusters = extract_keywords(df_analyzed)
-    keep, improve, ideas = _generate_recommendations(summary, keywords, clusters)
+    analysis = analyze_niches(df_analyzed, videos)
+    requests = extract_requests(df_analyzed)
+    keep, improve, ideas = _generate_recommendations(
+        summary, keywords, clusters, analysis, requests)
 
     print(f'\n  Sentiment: {summary["positive"]}% pos / '
           f'{summary["neutral"]}% neu / {summary["negative"]}% neg '
@@ -109,10 +112,9 @@ def run_dataset(name: str, comments_file: str, videos_file: str | None,
                 flags.append(f'{name}: generic keyword "{w}" survived into cluster {cname}')
 
     # ---- niche engagement signal (needs video metadata or video_type) ----
-    _print_niche_signal(df_analyzed, videos, name, flags, expect_signal)
+    _print_niche_signal(analysis, name, flags, expect_signal)
 
     # ---- audience requests ----
-    requests = extract_requests(df_analyzed)
     print(f'\n  Audience requests ({len(requests)} found):')
     for r in requests[:6]:
         print(f'    {r["count"]:>3}x  "{r["request"][:60]}"  [{r["top_video_type"]}]')
@@ -136,11 +138,9 @@ def run_dataset(name: str, comments_file: str, videos_file: str | None,
     return flags
 
 
-def _print_niche_signal(df_analyzed: pd.DataFrame, videos, name: str, flags: list,
+def _print_niche_signal(analysis, name: str, flags: list,
                         expect_signal: bool = False):
-    """Run the real niche analyzer and verify signal exists."""
-    analysis = analyze_niches(df_analyzed, videos)
-
+    """Print the niche analyzer output and verify signal exists."""
     if analysis is None:
         print('\n  Niche analysis: NONE (no video_type available)')
         flags.append(f'{name}: no niche data at all')
