@@ -90,16 +90,6 @@ def show_upload_page():
             sample_df = pd.read_csv(sample_path, encoding='utf-8-sig')
             csv_data = sample_df.to_csv(index=False, encoding='utf-8-sig').encode('utf-8-sig')
 
-            st.markdown("""
-            <style>
-            .download-btn {
-                background-color: #4361EE !important;
-                color: white !important;
-                font-weight: 600 !important;
-            }
-            </style>
-            """, unsafe_allow_html=True)
-
             st.download_button(
                 label="Download Sample Comments",
                 data=csv_data,

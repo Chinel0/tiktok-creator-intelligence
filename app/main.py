@@ -104,6 +104,17 @@ st.markdown("""
         background-color: #3451D1 !important;
     }
 
+    /* Download buttons */
+    [data-testid="baseButton-secondary"] {
+        background-color: #4361EE !important;
+        border: none !important;
+        color: white !important;
+        border-radius: 8px !important;
+    }
+    [data-testid="baseButton-secondary"]:hover {
+        background-color: #3451D1 !important;
+    }
+
     /* Sidebar TikTok title colour */
     [data-testid="stSidebar"] h2 { color: #4361EE !important; }
 
