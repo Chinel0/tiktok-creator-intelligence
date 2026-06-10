@@ -96,9 +96,13 @@ def show_dashboard_page():
             },
             hole=0.45,
         )
-        pie.update_traces(textposition='inside', textinfo='percent+label')
+        pie.update_traces(
+            textposition='inside', textinfo='percent+label',
+            hovertemplate='%{label}: %{value}% of comments<extra></extra>',
+        )
         pie.update_layout(showlegend=False, margin=dict(t=10, b=10, l=10, r=10))
-        st.plotly_chart(pie, use_container_width=True)
+        st.plotly_chart(pie, use_container_width=True,
+                        config={'displayModeBar': False})
 
     with right:
         st.markdown("#### Top Keywords")
@@ -110,12 +114,19 @@ def show_dashboard_page():
                 orientation='h',
                 color_discrete_sequence=[C_PRIMARY],
             )
+            bar.update_traces(
+                hovertemplate='"%{y}" — appears distinctively often '
+                              '(score %{x:.3f})<extra></extra>',
+            )
             bar.update_layout(
                 yaxis=dict(autorange='reversed'),
                 margin=dict(t=10, b=10, l=10, r=10),
-                xaxis_title='', yaxis_title='',
+                xaxis_title='How distinctive the word is in your comments (TF-IDF)',
+                yaxis_title='',
+                xaxis_title_font=dict(size=11, color='#9ca3af'),
             )
-            st.plotly_chart(bar, use_container_width=True)
+            st.plotly_chart(bar, use_container_width=True,
+                            config={'displayModeBar': False})
         else:
             st.info("Not enough data to extract keywords.")
 

@@ -103,7 +103,8 @@ def show_recommendations_page():
         for rec in improve:
             _rec_card(rec['title'], rec['reason'], rec['tip'], C_NEGATIVE)
     else:
-        st.success("No major improvement areas detected — your content looks solid!")
+        st.success("No urgent problems found in this dataset — we only flag issues "
+                   "the data can prove.")
 
     # ── Suggested Content Ideas ───────────────────────────────────────────────
     st.markdown("### Suggested Content Ideas")
@@ -213,6 +214,7 @@ def _generate_recommendations(summary: dict, keywords: list, clusters: dict,
 
     # 3. Where the audience mood is best.
     most_loved = na.get('most_loved')
+    loved_quiet_fired = False
     if most_loved and most_loved != best:
         m = niches[most_loved]
         if m['positive_pct'] >= 40 and most_loved == weakest and ratio and ratio >= 1.5:
@@ -227,6 +229,7 @@ def _generate_recommendations(summary: dict, keywords: list, clusters: dict,
                            f'question or hook from your {best} videos to wake up the '
                            f'comment section.'),
             })
+            loved_quiet_fired = True
         elif m['positive_pct'] >= 40:
             keep.append({
                 'title':  f'Your {most_loved} Audience Is the Happiest',
@@ -256,7 +259,7 @@ def _generate_recommendations(summary: dict, keywords: list, clusters: dict,
             negativity_covered = True
 
     # 1b. High overall negativity with no single niche to blame.
-    if neg >= 15 and not negativity_covered:
+    if neg >= 12 and not negativity_covered:
         improve.append({
             'title':  'High Negative Score — Check What It Really Is',
             'reason': f'{neg}% of all your comments score negative, spread across niches.',
@@ -287,9 +290,9 @@ def _generate_recommendations(summary: dict, keywords: list, clusters: dict,
         })
 
     # 4. The weakest niche, when the gap is big enough to act on.
-    #    (Skipped when it is also the most loved - the 'Loved but Quiet'
-    #    card above already covers that nuance.)
-    if best and weakest and ratio and ratio >= 2 and weakest != most_loved:
+    #    (Skipped only when the 'Loved but Quiet' card actually fired -
+    #    that card already covers the nuance.)
+    if best and weakest and ratio and ratio >= 2 and not loved_quiet_fired:
         w = niches[weakest]
         improve.append({
             'title':  f'Rethink {weakest}',
