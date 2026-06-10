@@ -179,9 +179,11 @@ _go = st.query_params.get("go", "")
 if _go == "register":
     st.session_state.auth_page = "register"
     st.query_params.clear()
+    st.rerun()
 elif _go == "login":
     st.session_state.auth_page = "login"
     st.query_params.clear()
+    st.rerun()
 
 
 # ── Sidebar ───────────────────────────────────────────────────────────────────
