@@ -1,6 +1,6 @@
 """
 upload.py  —  Page 1: Upload Data
-CSV upload only - for testing with synthetic data or user's own TikTok exports
+CSV upload only - accepts both synthetic data format and scraped data format
 """
 
 import os
@@ -17,6 +17,14 @@ from nlp.keywords     import extract_keywords
 
 ROOT        = Path(__file__).parent.parent.parent
 REQUIRED_COLS = ['Comment Text', 'Comment Language', 'Comment Like Count', 'Author Nickname']
+
+# Also accept these alternate column names (from real scraper output)
+ALTERNATE_COLS = {
+    'comment_text': 'Comment Text',
+    'language': 'Comment Language',
+    'like_count': 'Comment Like Count',
+    'author_username': 'Author Nickname',
+}
 
 
 # ── Pipeline helper ────────────────────────────────────────────────────────────
@@ -38,13 +46,25 @@ def run_pipeline(df: pd.DataFrame):
 # ── Page ───────────────────────────────────────────────────────────────────────
 
 def show_upload_page():
-    st.title("Upload Your Comment Data")
+    st.markdown(
+        """<style>
+        .stTabs [data-baseweb="tab-list"] button [data-testid="stMarkdownContainer"] p {
+            font-size: 1rem;
+            color: #4361EE;
+            font-weight: 600;
+        }
+        </style>""",
+        unsafe_allow_html=True,
+    )
+
+    st.title("📊 Upload Your Comment Data")
     st.markdown("Upload a CSV file of TikTok comments to analyze your audience sentiment and keywords.")
+    st.markdown("---")
 
     uploaded = st.file_uploader(
         "Drag and drop your CSV here, or click Browse",
         type=['csv', 'xlsx', 'xls'],
-        help=f"Required columns: {', '.join(REQUIRED_COLS)}",
+        help=f"Accepts both standard and scraped data formats",
     )
 
     if uploaded is not None:
@@ -54,12 +74,10 @@ def show_upload_page():
             st.error(f"Could not read the file: {e}")
             return
 
-        missing = [c for c in REQUIRED_COLS if c not in df.columns]
-        if missing:
-            st.error(
-                f"**Missing columns:** {', '.join(missing)}\n\n"
-                f"Your file must have: **{', '.join(REQUIRED_COLS)}**"
-            )
+        # Try to rename columns if needed (accepts both formats)
+        df = _normalize_columns(df)
+
+        if df is None:
             return
 
         st.success(f"✅ File loaded — {len(df)} comments found")
@@ -71,18 +89,68 @@ def show_upload_page():
 
     else:
         st.markdown("---")
-        st.info(
-            "### How to get your data\n\n"
-            "**Option 1:** Export from TikTok (if available in your region)\n\n"
-            "**Option 2:** Use our test dataset\n"
-            "- Download one of our sample CSVs with realistic comments\n"
-            "- Test how the analysis works\n\n"
-            "**Data file should have columns:**\n"
-            "- `Comment Text` — the actual comment\n"
-            "- `Comment Language` — language code (en, de, etc.)\n"
-            "- `Comment Like Count` — how many people liked it\n"
-            "- `Author Nickname` — commenter's handle"
+        with st.container():
+            st.markdown(
+                """
+                <div style="background-color:#f0f4ff; padding:20px; border-radius:8px; border-left:4px solid #4361EE;">
+                <h3 style="color:#4361EE; margin-top:0;">📌 How to get your data</h3>
+
+                <p><strong>Option 1:</strong> Use your scraped TikTok data</p>
+                <ul>
+                <li>From the local scraper (comment_*.csv)</li>
+                <li>The app automatically handles the format</li>
+                </ul>
+
+                <p><strong>Option 2:</strong> Use our test datasets</p>
+                <ul>
+                <li>Download a sample CSV (TERA, DENZEL, JUDITH, etc.)</li>
+                <li>Test the analysis with realistic comments</li>
+                </ul>
+
+                <p style="margin-top:20px;"><strong>Data columns (accepts both formats):</strong></p>
+                <ul>
+                <li><code>Comment Text</code> or <code>comment_text</code> — the comment</li>
+                <li><code>Comment Language</code> or <code>language</code> — language code (en, de, etc.)</li>
+                <li><code>Comment Like Count</code> or <code>like_count</code> — engagement</li>
+                <li><code>Author Nickname</code> or <code>author_username</code> — commenter handle</li>
+                </ul>
+                </div>
+                """,
+                unsafe_allow_html=True,
+            )
+
+
+def _normalize_columns(df: pd.DataFrame) -> pd.DataFrame:
+    """
+    Accepts both column naming schemes:
+    - Standard: Comment Text, Comment Language, Comment Like Count, Author Nickname
+    - Scraped: comment_text, language, like_count, author_username
+
+    Returns normalized dataframe or None if validation fails.
+    """
+    df = df.copy()
+
+    # Check if already in standard format
+    has_standard = all(c in df.columns for c in REQUIRED_COLS)
+
+    # Check if in alternate format
+    has_alternate = all(c in df.columns for c in ALTERNATE_COLS.keys())
+
+    if has_standard:
+        # Already correct
+        return df
+    elif has_alternate:
+        # Rename alternate columns to standard
+        df = df.rename(columns=ALTERNATE_COLS)
+        return df
+    else:
+        # Missing required columns
+        st.error(
+            f"**Missing columns.** Your file must have one of these sets:\n\n"
+            f"**Standard format:** {', '.join(REQUIRED_COLS)}\n\n"
+            f"**OR Scraped format:** {', '.join(ALTERNATE_COLS.keys())}"
         )
+        return None
 
 
 def _show_preview_and_stats(df: pd.DataFrame):
