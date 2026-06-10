@@ -46,6 +46,30 @@ st.markdown("""
     /* Hide the default Streamlit header decoration */
     [data-testid="stDecoration"] { display: none; }
 
+    /* TOP BLUE NAVIGATION BAR */
+    .top-nav-bar {
+        background-color: #4361EE;
+        padding: 14px 20px;
+        margin: -20px -20px 20px -20px;
+        color: white;
+        font-size: 16px;
+        font-weight: 600;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        border-radius: 0;
+    }
+
+    .arrow-icon {
+        font-size: 24px;
+        animation: pulse 1.5s infinite;
+    }
+
+    @keyframes pulse {
+        0%, 100% { opacity: 1; }
+        50% { opacity: 0.6; }
+    }
+
     /* Sidebar styling */
     [data-testid="stSidebar"] {
         background-color: white;
@@ -106,6 +130,17 @@ st.markdown("""
     }
 </style>
 """, unsafe_allow_html=True)
+
+# ── Top Navigation Bar ────────────────────────────────────────────────────────
+st.markdown(
+    """
+    <div class="top-nav-bar">
+        <span class="arrow-icon">→</span>
+        <span>Click the menu on the left to navigate</span>
+    </div>
+    """,
+    unsafe_allow_html=True
+)
 
 # ── Database initialisation ───────────────────────────────────────────────────
 init_db()
