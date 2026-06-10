@@ -247,10 +247,9 @@ def _show_login():
             else:
                 st.error("Incorrect username or password.")
 
-    st.markdown("---")
-    col1, col2 = st.columns([4, 1])
+    col1, col2 = st.columns([3, 1], gap="small")
     with col1:
-        st.write("Don't have an account?")
+        st.markdown("Don't have an account?")
     with col2:
         if st.button("Register", key="login_register_btn"):
             st.session_state.auth_page = "register"
@@ -284,10 +283,9 @@ def _show_register():
             else:
                 st.error(msg)
 
-    st.markdown("---")
-    col1, col2 = st.columns([4, 1])
+    col1, col2 = st.columns([3, 1], gap="small")
     with col1:
-        st.write("Already have an account?")
+        st.markdown("Already have an account?")
     with col2:
         if st.button("Login", key="register_login_btn"):
             st.session_state.auth_page = "login"
