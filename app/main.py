@@ -247,13 +247,10 @@ def _show_login():
             else:
                 st.error("Incorrect username or password.")
 
-    col1, col2 = st.columns([3, 1])
-    with col1:
-        st.markdown("Don't have an account?")
-    with col2:
-        if st.button("Register here", key="login_register_btn"):
-            st.session_state.auth_page = "register"
-            st.rerun()
+    st.markdown("---")
+    if st.button("Register here", key="login_register_btn", use_container_width=True):
+        st.session_state.auth_page = "register"
+        st.rerun()
 
 
 def _show_register():
@@ -283,13 +280,10 @@ def _show_register():
             else:
                 st.error(msg)
 
-    col1, col2 = st.columns([3, 1])
-    with col1:
-        st.markdown("Already have an account?")
-    with col2:
-        if st.button("Login here", key="register_login_btn"):
-            st.session_state.auth_page = "login"
-            st.rerun()
+    st.markdown("---")
+    if st.button("Login here", key="register_login_btn", use_container_width=True):
+        st.session_state.auth_page = "login"
+        st.rerun()
 
 
 # ── Page router ───────────────────────────────────────────────────────────────
