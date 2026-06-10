@@ -174,16 +174,6 @@ for key, default in _defaults.items():
     if key not in st.session_state:
         st.session_state[key] = default
 
-# Handle ?go=register / ?go=login links from auth forms
-_go = st.query_params.get("go", "")
-if _go == "register":
-    st.session_state.auth_page = "register"
-    st.query_params.clear()
-    st.rerun()
-elif _go == "login":
-    st.session_state.auth_page = "login"
-    st.query_params.clear()
-    st.rerun()
 
 
 # ── Sidebar ───────────────────────────────────────────────────────────────────
@@ -249,12 +239,13 @@ def _show_login():
             else:
                 st.error("Incorrect username or password.")
 
-    st.markdown(
-        "Don't have an account? "
-        '<a href="?go=register" target="_top" style="color:#4361EE; font-weight:600; text-decoration:none;">'
-        "register here</a>",
-        unsafe_allow_html=True,
-    )
+    col1, col2 = st.columns([2.5, 0.5])
+    with col1:
+        st.write("Don't have an account?")
+    with col2:
+        if st.button("Register", key="to_register", help="Sign up for an account"):
+            st.session_state.auth_page = "register"
+            st.rerun()
 
 
 def _show_register():
@@ -284,12 +275,13 @@ def _show_register():
             else:
                 st.error(msg)
 
-    st.markdown(
-        "Already have an account? "
-        '<a href="?go=login" target="_top" style="color:#4361EE; font-weight:600; text-decoration:none;">'
-        "login here</a>",
-        unsafe_allow_html=True,
-    )
+    col1, col2 = st.columns([2.5, 0.5])
+    with col1:
+        st.write("Already have an account?")
+    with col2:
+        if st.button("Login", key="to_login", help="Go back to login"):
+            st.session_state.auth_page = "login"
+            st.rerun()
 
 
 # ── Page router ───────────────────────────────────────────────────────────────
