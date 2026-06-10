@@ -1,22 +1,34 @@
 """
 evaluation.py — Deliverable 8: Evaluation & Quality
-Runs all measurable sections and prints slide-ready results.
+Runs sections 1-4 against the CURRENT pipeline and writes a slide-ready
+report to documents/deliverable8_results.md.
 
-Ground truth strategy: TextBlob polarity is used as an independent
-labeller.  VADER and TextBlob disagree on ~20 % of social-media text —
-any agreement above random chance is a meaningful signal.
-The student can also replace these labels with their own manual labels
-by editing  data/test_set_for_labeling.csv  (column 'true_label').
+Ground truth: data/test_set_labels.csv — 37 comments from the real
+@ichbinnelo dataset, manually labelled positive/neutral/negative.
+This is a held-out set: none of these labels were used to build or
+tune any part of the pipeline (nothing in the pipeline is trained).
+
+System framing for the benchmark:
+  Baseline A (naive)    : majority-class predictor (always 'positive')
+  Baseline B (ablation) : VADER on CLEANED text — emojis, caps and
+                          punctuation stripped. This is the system
+                          without its key design decision.
+  Full system           : VADER on ORIGINAL text (what the app ships) —
+                          emojis/caps/punctuation reach the analyser.
+
+Run:  python evaluation.py
 """
 
-import sys, io, time, random, re
+import io
+import sys
+import time
 from pathlib import Path
 
-import pandas as pd
 import numpy as np
-from sklearn.metrics import accuracy_score, f1_score, classification_report
+import pandas as pd
+from sklearn.metrics import accuracy_score, classification_report, f1_score
 
-# Force UTF-8 on Windows terminal
+# Force UTF-8 on Windows terminals (test set contains emojis)
 sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding="utf-8", errors="replace")
 sys.stderr = io.TextIOWrapper(sys.stderr.buffer, encoding="utf-8", errors="replace")
 
@@ -24,322 +36,311 @@ ROOT = Path(__file__).parent
 sys.path.insert(0, str(ROOT))
 
 from nlp.preprocessor import preprocess, clean_text
-from nlp.sentiment    import analyze_sentiment
-from nlp.keywords     import extract_keywords
+from nlp.sentiment import analyze_sentiment
+from nlp.keywords import extract_keywords
+from nlp.niche_analyzer import analyze_niches
+from nlp.request_extractor import extract_requests
+from app.components.upload import normalize_comment_columns, merge_video_metadata
 
-DATA_FILE  = ROOT / "data" / "comments_20260526_233400.csv"
-TEST_CSV   = ROOT / "data" / "test_set_for_labeling.csv"
+DATA_FILE = ROOT / "data" / "comments_20260526_233400.csv"
+VIDEO_FILE = ROOT / "data" / "videos_merged.csv"
+TEST_FILE = ROOT / "data" / "test_set_labels.csv"
+REPORT_FILE = ROOT / "documents" / "deliverable8_results.md"
 
-SEP = "-" * 65
-
-
-# ── helpers ───────────────────────────────────────────────────────────────────
-
-def load_raw() -> pd.DataFrame:
-    df = pd.read_csv(DATA_FILE, encoding="utf-8-sig")
-    df = df.rename(columns={
-        "comment_text":    "Comment Text",
-        "language":        "Comment Language",
-        "like_count":      "Comment Like Count",
-        "author_username": "Author Nickname",
-    })
-    df.loc[df["original_text"].notna(), "Comment Language"] = "en"
-    return df
+SEP = "-" * 70
+_report_lines: list = []
 
 
-def textblob_label(text: str) -> str:
-    """Label a comment with TextBlob — independent ground truth."""
-    from textblob import TextBlob
-    try:
-        polarity = TextBlob(str(text)).sentiment.polarity
-        if polarity >  0.1: return "positive"
-        if polarity < -0.1: return "negative"
-        return "neutral"
-    except Exception:
-        return "neutral"
+def out(line: str = ""):
+    """Print to console AND collect for the markdown report."""
+    print(line)
+    _report_lines.append(line)
 
 
-def vader_label(text: str) -> str:
-    """VADER on raw (uncleaned) text — Baseline B."""
+# ── shared VADER ──────────────────────────────────────────────────────────────
+
+def _sia():
     import nltk
     from nltk.sentiment.vader import SentimentIntensityAnalyzer
     nltk.download("vader_lexicon", quiet=True)
-    sia = SentimentIntensityAnalyzer()
-    c = sia.polarity_scores(str(text))["compound"]
-    if c >= 0.05:  return "positive"
-    if c <= -0.05: return "negative"
+    return SentimentIntensityAnalyzer()
+
+
+def _classify(compound: float) -> str:
+    if compound >= 0.05:
+        return "positive"
+    if compound <= -0.05:
+        return "negative"
     return "neutral"
 
 
-def vader_clean_label(text: str) -> str:
-    """VADER on preprocessed text — Full System."""
-    import nltk
-    from nltk.sentiment.vader import SentimentIntensityAnalyzer
-    nltk.download("vader_lexicon", quiet=True)
-    sia = SentimentIntensityAnalyzer()
-    cleaned = clean_text(text)
-    if not cleaned or len(cleaned) < 3:
-        return "neutral"
-    c = sia.polarity_scores(cleaned)["compound"]
-    if c >= 0.05:  return "positive"
-    if c <= -0.05: return "negative"
-    return "neutral"
+# ── Sections 1 + 2: metrics and benchmark ─────────────────────────────────────
 
+def run_metrics_and_benchmark():
+    test = pd.read_csv(TEST_FILE, encoding="utf-8-sig")
+    y_true = test["true_label"].str.strip().str.lower().tolist()
+    labels = sorted(set(y_true))
+    sia = _sia()
 
-def is_emoji_only(text: str) -> bool:
-    cleaned = re.sub(r"[^\w\s]", "", str(text)).strip()
-    return len(cleaned) < 3 and len(str(text).strip()) > 0
+    majority = pd.Series(y_true).mode()[0]
+    y_naive = [majority] * len(test)
 
+    # Ablation: emoji/caps/punctuation stripped before VADER
+    y_ablat = [
+        _classify(sia.polarity_scores(clean_text(t))["compound"])
+        if len(clean_text(t)) >= 3 else "neutral"
+        for t in test["Comment Text"]
+    ]
 
-# ── build test set ────────────────────────────────────────────────────────────
+    # Full system: VADER on original text (exactly what sentiment.py does)
+    y_full = [_classify(sia.polarity_scores(str(t))["compound"])
+              for t in test["Comment Text"]]
 
-def build_test_set(df_raw: pd.DataFrame, n: int = 50, seed: int = 42) -> pd.DataFrame:
-    """
-    50-comment test set labelled by TextBlob (independent ground truth).
-    Saves to CSV so the student can verify / correct the labels manually.
-    """
-    # Work only with English comments
-    df_en = df_raw[df_raw["Comment Language"].str.lower() == "en"].copy()
-    df_en["clean"] = df_en["Comment Text"].apply(clean_text)
-    df_en = df_en[df_en["clean"].str.len() >= 3].reset_index(drop=True)
+    def scores(y_pred):
+        acc = round(accuracy_score(y_true, y_pred) * 100, 1)
+        f1 = round(f1_score(y_true, y_pred, average="macro",
+                            zero_division=0, labels=labels) * 100, 1)
+        return acc, f1
 
-    # Use TextBlob as ground truth
-    print(f"  Labelling {min(n*3, len(df_en))} candidates with TextBlob...")
-    sample = df_en.sample(min(n * 3, len(df_en)), random_state=seed).copy()
-    sample["true_label"] = sample["Comment Text"].apply(textblob_label)
+    acc_a, f1_a = scores(y_naive)
+    acc_b, f1_b = scores(y_ablat)
+    acc_f, f1_f = scores(y_full)
 
-    # Balanced sample: up to 20 pos / 15 neg / 15 neutral
-    pos = sample[sample["true_label"] == "positive"].head(20)
-    neg = sample[sample["true_label"] == "negative"].head(15)
-    neu = sample[sample["true_label"] == "neutral"].head(15)
-    test = pd.concat([pos, neg, neu]).sample(frac=1, random_state=seed).head(n).reset_index(drop=True)
+    out(SEP)
+    out("SECTION 1: PERFORMANCE METRICS  +  SECTION 2: BENCHMARK COMPARISON")
+    out(SEP)
+    out()
+    out(f"Held-out test set: {len(test)} real comments from @ichbinnelo, "
+        f"manually labelled.")
+    out(f"Class distribution: "
+        + ", ".join(f"{c}={y_true.count(c)}" for c in labels))
+    out()
+    out("| System | Accuracy | Macro F1 |")
+    out("|---|---|---|")
+    out(f"| Baseline A: majority class (always '{majority}') | {acc_a}% | {f1_a}% |")
+    out(f"| Baseline B (ablation): VADER on cleaned text, emojis stripped | {acc_b}% | {f1_b}% |")
+    out(f"| Full system: VADER on original text (emojis kept) | **{acc_f}%** | **{f1_f}%** |")
+    out()
+    out(f"Gain over naive baseline : +{round(acc_f - acc_a, 1)} pts accuracy, "
+        f"+{round(f1_f - f1_a, 1)} pts Macro F1")
+    out(f"Gain from keeping emojis : +{round(acc_f - acc_b, 1)} pts accuracy, "
+        f"+{round(f1_f - f1_b, 1)} pts Macro F1")
+    out()
+    out("Why these metrics?")
+    out("- Accuracy: overall correctness; the test set roughly mirrors the real")
+    out("  class balance, so accuracy is directly interpretable.")
+    out("- Macro F1: averages F1 over all three classes equally, so the rare")
+    out("  negative class (high-value to detect for creators) counts as much")
+    out("  as the dominant positive class.")
+    out()
+    out("Classification report (full system vs manual labels):")
+    out("```")
+    out(classification_report(y_true, y_full, labels=labels, zero_division=0))
+    out("```")
 
-    # Save for manual review
-    out = test[["Comment Text", "clean", "true_label"]].copy()
-    out.to_csv(TEST_CSV, index=False, encoding="utf-8-sig")
-    print(f"  Saved to {TEST_CSV.name} — open it to verify/correct labels manually.")
+    # Return predictions for error analysis
+    test = test.copy()
+    test["pred_full"] = y_full
+    test["pred_ablation"] = y_ablat
     return test
 
 
-# ── pipeline timing ───────────────────────────────────────────────────────────
+# ── Section 3: pipeline efficiency ────────────────────────────────────────────
 
-def time_pipeline(n_runs: int = 10):
-    df_raw = load_raw()
-    times, n_comments = [], 0
+def run_efficiency(n_runs: int = 10):
+    out(SEP)
+    out("SECTION 3: PIPELINE EFFICIENCY TEST")
+    out(SEP)
+    out()
+
+    raw = pd.read_csv(DATA_FILE, encoding="utf-8-sig")
+    raw = normalize_comment_columns(raw)
+    videos = pd.read_csv(VIDEO_FILE, encoding="utf-8-sig")
+
+    stage_totals = {"merge": [], "preprocess": [], "sentiment": [],
+                    "keywords": [], "niche": [], "requests": []}
+    totals = []
+
     for _ in range(n_runs):
+        df = raw.copy()
         t0 = time.perf_counter()
-        df_c  = preprocess(df_raw.copy())
-        df_s, _ = analyze_sentiment(df_c)
-        extract_keywords(df_s, top_n=20)
-        times.append((time.perf_counter() - t0) * 1000)
-        n_comments = len(df_c)
-    return times, n_comments
+
+        t = time.perf_counter()
+        df, _ = merge_video_metadata(df, videos)
+        stage_totals["merge"].append(time.perf_counter() - t)
+
+        t = time.perf_counter()
+        df_clean = preprocess(df)
+        stage_totals["preprocess"].append(time.perf_counter() - t)
+
+        t = time.perf_counter()
+        df_analyzed, _ = analyze_sentiment(df_clean)
+        stage_totals["sentiment"].append(time.perf_counter() - t)
+
+        t = time.perf_counter()
+        extract_keywords(df_analyzed, top_n=20)
+        stage_totals["keywords"].append(time.perf_counter() - t)
+
+        t = time.perf_counter()
+        analyze_niches(df_analyzed, videos)
+        stage_totals["niche"].append(time.perf_counter() - t)
+
+        t = time.perf_counter()
+        extract_requests(df_analyzed)
+        stage_totals["requests"].append(time.perf_counter() - t)
+
+        totals.append(time.perf_counter() - t0)
+
+    mean_s = float(np.mean(totals))
+    worst_s = float(np.max(totals))
+
+    out(f"Measured on the real dataset ({len(raw)} comments + {len(videos)} "
+        f"videos), {n_runs} full runs, current pipeline (merge, preprocess,")
+    out("sentiment, keywords, niche analysis, request extraction).")
+    out()
+    out("| Scale | Avg Latency | Worst Case | Cost/Query | Est. Monthly Cost |")
+    out("|---|---|---|---|---|")
+    for label in ["100 queries/mo", "1,000 queries/mo", "10,000 queries/mo"]:
+        out(f"| {label} | {mean_s:.2f} s | {worst_s:.2f} s | EUR 0.00 | EUR 0.00 |")
+    out()
+    out("Cost is EUR 0.00 at every scale: the pipeline is fully local "
+        "(lexicon + statistics), no API calls, no GPU.")
+    out()
+
+    # Bottleneck breakdown
+    out("Per-stage breakdown (mean):")
+    out()
+    out("| Stage | Mean time | Share of total |")
+    out("|---|---|---|")
+    for stage, vals in sorted(stage_totals.items(),
+                              key=lambda kv: -np.mean(kv[1])):
+        m = float(np.mean(vals))
+        out(f"| {stage} | {m*1000:.0f} ms | {m/mean_s*100:.0f}% |")
+    out()
+    bottleneck = max(stage_totals, key=lambda k: np.mean(stage_totals[k]))
+    share = np.mean(stage_totals[bottleneck]) / mean_s * 100
+    out(f"Bottleneck: **{bottleneck}** ({share:.0f}% of total latency). "
+        f"Throughput: ~{len(raw)/mean_s:,.0f} comments/second end-to-end.")
+    out()
 
 
-# ── error analysis ────────────────────────────────────────────────────────────
+# ── Section 4: error analysis ─────────────────────────────────────────────────
 
-def run_error_analysis(df_raw: pd.DataFrame) -> dict:
-    import nltk
-    from nltk.sentiment.vader import SentimentIntensityAnalyzer
-    nltk.download("vader_lexicon", quiet=True)
-    sia = SentimentIntensityAnalyzer()
+def run_error_analysis(test: pd.DataFrame):
+    out(SEP)
+    out("SECTION 4: ERROR ANALYSIS (current system)")
+    out(SEP)
+    out()
 
-    errors = {}
+    raw = pd.read_csv(DATA_FILE, encoding="utf-8-sig")
+    raw = normalize_comment_columns(raw)
+    sia = _sia()
+    n_raw = len(raw)
 
-    # 1. Emoji-only dropped
-    errors["Emoji-only comments (no text to analyse)"] = int(
-        df_raw["Comment Text"].apply(is_emoji_only).sum()
+    # 1. Non-English exclusion (incl. langdetect false positives)
+    non_en = raw[raw["Comment Language"].str.lower() != "en"]
+    short_non_en = non_en[non_en["Comment Text"].fillna("").str.split()
+                          .str.len() <= 2]
+
+    # 2. Hype slang scored negative on the real data
+    slang = ["hard", "crazy", "sick", "insane", "dead", "killed", "brutal"]
+    en = raw[raw["Comment Language"].str.lower() == "en"].copy()
+    has_slang = en["Comment Text"].str.lower().str.contains(
+        "|".join(rf"\b{s}\b" for s in slang), na=False)
+    slang_rows = en[has_slang].copy()
+    slang_neg = sum(
+        1 for t in slang_rows["Comment Text"]
+        if _classify(sia.polarity_scores(str(t))["compound"]) == "negative"
     )
 
-    # 2. Non-English not translated
-    if "original_text" in df_raw.columns:
-        non_en_untranslated = df_raw[
-            (df_raw["Comment Language"].str.lower() != "en") &
-            (df_raw["original_text"].isna())
-        ]
-        errors["Non-English comments without translation"] = len(non_en_untranslated)
-    else:
-        errors["Non-English comments without translation"] = 0
+    # 3. Misclassifications on the labelled test set
+    wrong = test[test["true_label"].str.lower() != test["pred_full"]]
+    neutral_as_pos = wrong[(wrong["true_label"].str.lower() == "neutral")
+                           & (wrong["pred_full"] == "positive")]
+    pos_as_neutral = wrong[(wrong["true_label"].str.lower() == "positive")
+                           & (wrong["pred_full"] == "neutral")]
 
-    # 3. Short after cleaning
-    en = df_raw[df_raw["Comment Language"].str.lower() == "en"].copy()
-    en["clean"] = en["Comment Text"].apply(clean_text)
-    errors["Comments too short after cleaning (< 3 chars)"] = int(
-        (en["clean"].str.len() < 3).sum()
+    # 4. Sarcasm risk (marker words + confident positive score)
+    markers = ["lol", "haha", "sure", "obviously"]
+    has_marker = en["Comment Text"].str.lower().str.contains(
+        "|".join(markers), na=False)
+    sarcasm_risk = sum(
+        1 for t in en[has_marker]["Comment Text"]
+        if sia.polarity_scores(str(t))["compound"] > 0.3
     )
 
-    # 4. Likely sarcasm (sarcasm markers + VADER scores positive)
-    markers = ["lol", "haha", "sure", "right", "obviously", "wow", "ok ok"]
-    has_marker = en["Comment Text"].str.lower().str.contains("|".join(markers), na=False)
-    en_marker = en[has_marker].copy()
-    en_marker["compound"] = en_marker["clean"].apply(
-        lambda t: sia.polarity_scores(t)["compound"] if isinstance(t, str) and len(t) > 2 else 0
-    )
-    errors["Potential sarcasm (marker + positive VADER score)"] = int(
-        (en_marker["compound"] > 0.3).sum()
-    )
+    out("| Error Category | Count | Root Cause | Fix Priority |")
+    out("|---|---|---|---|")
+    out(f"| Non-English comments excluded | {len(non_en)}/{n_raw} | "
+        f"only German was translated at scrape time; rest is dropped | HIGH |")
+    out(f"| ...of which likely langdetect false positives | "
+        f"{len(short_non_en)}/{len(non_en)} | 1-2 word comments ('wow') "
+        f"misdetected as other languages | HIGH |")
+    out(f"| Hype slang scored negative | {slang_neg}/{len(slang_rows)} "
+        f"slang comments | VADER lexicon predates Gen-Z usage of "
+        f"hard/crazy/sick as praise | MEDIUM |")
+    out(f"| Test-set misclassifications | {len(wrong)}/{len(test)} | "
+        f"mostly neutral/positive boundary (see below) | MEDIUM |")
+    out(f"| Potential sarcasm scored positive | {sarcasm_risk}/{n_raw} | "
+        f"lexicon scoring cannot read tone | LOW |")
+    out()
 
-    # 5. TikTok slang
-    slang = ["slay", "lowkey", "no cap", "fr fr", "bussin", "periodt", "bestie", "vibe"]
-    errors["TikTok slang (may not be in VADER lexicon)"] = int(
-        df_raw["Comment Text"].str.lower().str.contains("|".join(slang), na=False).sum()
-    )
+    out("Concrete misclassified examples (full system vs manual label):")
+    out()
+    shown = 0
+    for _, r in wrong.iterrows():
+        if shown >= 3:
+            break
+        out(f'- "{str(r["Comment Text"])[:70]}" — labelled '
+            f'{r["true_label"].lower()}, predicted {r["pred_full"]}')
+        shown += 1
+    if neutral_as_pos is not None:
+        out()
+        out(f"Boundary pattern: {len(neutral_as_pos)} neutral comments "
+            f"predicted positive, {len(pos_as_neutral)} positive predicted "
+            f"neutral — the +/-0.05 compound threshold is the sensitive part.")
+    out()
+    out("Already fixed during development (worth presenting):")
+    out("- Emoji-only comments were DROPPED in an early version (clean_text")
+    out("  stripped them to empty). Fixed: VADER now scores the ORIGINAL")
+    out("  text, and emoji-only comments are kept. The ablation result in")
+    out("  Section 2 quantifies exactly how much this fix is worth.")
+    out("- Generic keyword garbage ('content' recommended as a topic) was")
+    out("  fixed with a platform-word filter and token-level cluster seeds.")
+    out()
+    out("Top fixes, prioritized:")
+    out("1. [HIGH] Trust short comments as English when ASCII-only instead of")
+    out("   dropping them on langdetect's guess - recovers most of the")
+    out("   excluded comments at zero risk.")
+    out("2. [MEDIUM] Add custom VADER lexicon entries for TikTok hype slang")
+    out("   (hard, crazy, sick, dead => positive in this domain).")
+    out("3. [LOW] Flag sarcasm-marker comments for manual review instead of")
+    out("   trusting the positive score.")
+    out()
 
-    return errors
 
-
-# ── MAIN ──────────────────────────────────────────────────────────────────────
+# ── main ──────────────────────────────────────────────────────────────────────
 
 def main():
-    random.seed(42)
-    df_raw    = load_raw()
-    total_raw = len(df_raw)
+    out("=" * 70)
+    out("DELIVERABLE 8 - EVALUATION & QUALITY REPORT")
+    out("TikTok Creator Intelligence | real @ichbinnelo dataset")
+    out("=" * 70)
+    out()
 
-    print("=" * 65)
-    print("DELIVERABLE 8 -- EVALUATION & QUALITY REPORT")
-    print("TikTok Creator Intelligence  |  @ichbinnelo dataset")
-    print("=" * 65)
+    test = run_metrics_and_benchmark()
+    out()
+    run_efficiency(n_runs=10)
+    out()
+    run_error_analysis(test)
 
-    # ── Sections 1 & 2 ──────────────────────────────────────────────────────
-    print(f"\n{SEP}")
-    print("SECTION 1: PERFORMANCE METRICS + SECTION 2: BENCHMARK")
-    print(SEP)
-    print("\n[Building 50-comment test set (TextBlob as independent ground truth)...]")
-    test = build_test_set(df_raw, n=50)
+    out("=" * 70)
+    out("Section 5 (user evaluation) is collected separately via the tester")
+    out("questionnaire - see documents/user_testing_questionnaire.md.")
+    out("=" * 70)
 
-    y_true     = test["true_label"].tolist()
-    y_baseline_a = ["neutral"] * len(test)                           # majority class
-    y_baseline_b = test["Comment Text"].apply(vader_label).tolist()  # VADER raw
-    y_full       = test["clean"].apply(vader_clean_label).tolist()   # VADER preprocessed
-
-    acc_a = round(accuracy_score(y_true, y_baseline_a) * 100, 1)
-    acc_b = round(accuracy_score(y_true, y_baseline_b) * 100, 1)
-    acc_f = round(accuracy_score(y_true, y_full)       * 100, 1)
-
-    labels_present = sorted(set(y_true))
-    f1_a = round(f1_score(y_true, y_baseline_a, average="macro", zero_division=0, labels=labels_present) * 100, 1)
-    f1_b = round(f1_score(y_true, y_baseline_b, average="macro", zero_division=0, labels=labels_present) * 100, 1)
-    f1_f = round(f1_score(y_true, y_full,       average="macro", zero_division=0, labels=labels_present) * 100, 1)
-
-    print(f"\nTest set: {len(test)} comments  |  Ground truth: TextBlob polarity")
-    print(f"Classes present: {labels_present}")
-    print()
-    print(f"{'System':<50} {'Accuracy':>10} {'Macro F1':>10}")
-    print("-" * 72)
-    print(f"{'Baseline A: Majority class (always neutral)':<50} {acc_a:>9}% {f1_a:>9}%")
-    print(f"{'Baseline B: VADER on raw text (no preprocessing)':<50} {acc_b:>9}% {f1_b:>9}%")
-    print(f"{'Full system: VADER + preprocessing + translation':<50} {acc_f:>9}% {f1_f:>9}%")
-    print()
-    print(f"Gain over naive baseline : +{round(acc_f-acc_a,1)}% accuracy, +{round(f1_f-f1_a,1)}% Macro F1")
-    print(f"Gain from preprocessing  : +{round(acc_f-acc_b,1)}% accuracy, +{round(f1_f-f1_b,1)}% Macro F1")
-
-    print("\nFull report — Full System vs TextBlob ground truth:")
-    print(classification_report(y_true, y_full, labels=labels_present, zero_division=0))
-
-    print("Why these metrics?")
-    print("  Accuracy: overall correctness on a balanced sample.")
-    print("  Macro F1: penalises poor performance on minority classes (negative comments)")
-    print("            which are rare in TikTok data but high-value to detect.")
-    print(f"\nNOTE: Manual labels available in data/test_set_for_labeling.csv")
-    print("  Open the file, review 'true_label' column, correct if needed, then re-run.")
-
-    # ── Section 3 ────────────────────────────────────────────────────────────
-    print(f"\n{SEP}")
-    print("SECTION 3: PIPELINE EFFICIENCY TEST")
-    print(SEP)
-    print(f"\n[Timing full pipeline over 10 runs on {total_raw} raw comments...]")
-    times, n_processed = time_pipeline(n_runs=10)
-
-    mean_ms  = round(np.mean(times))
-    worst_ms = round(np.max(times))
-    best_ms  = round(np.min(times))
-    per_q    = round(mean_ms / max(n_processed, 1), 2)
-
-    print(f"\nComments processed per run : {n_processed}")
-    print(f"Mean latency               : {mean_ms} ms  ({round(mean_ms/1000,2)} s)")
-    print(f"Best case                  : {best_ms} ms")
-    print(f"Worst case                 : {worst_ms} ms  ({round(worst_ms/1000,2)} s)")
-    print(f"Per-comment cost           : {per_q} ms/comment")
-
-    print(f"\n{'Scale':<22} {'Avg Latency':>13} {'Worst Case':>12} {'Cost/Query':>12} {'Est. Monthly':>14}")
-    print("-" * 75)
-    for label in ["100 queries/mo", "1,000 queries/mo", "10,000 queries/mo"]:
-        print(f"{label:<22} {str(round(mean_ms/1000,2))+' s':>13} {str(round(worst_ms/1000,2))+' s':>12} {'EUR 0.00':>12} {'EUR 0.00':>14}")
-
-    print("\nBottleneck: preprocessing (text cleaning + language filter) ~55% of latency.")
-    print("No external API calls -- pipeline is fully local, EUR 0 cost per query.")
-    print("Scraping latency (Playwright) is separate and is not included above.")
-
-    # ── Section 4 ────────────────────────────────────────────────────────────
-    print(f"\n{SEP}")
-    print("SECTION 4: ERROR ANALYSIS")
-    print(SEP)
-    errors = run_error_analysis(df_raw)
-
-    df_clean_final = preprocess(df_raw.copy())
-    dropped = total_raw - len(df_clean_final)
-
-    print(f"\nTotal raw comments    : {total_raw}")
-    print(f"After preprocessing   : {len(df_clean_final)}  ({round(len(df_clean_final)/total_raw*100,1)}%)")
-    print(f"Dropped (all causes)  : {dropped}  ({round(dropped/total_raw*100,1)}%)\n")
-
-    print(f"{'Error Category':<53} {'Count':>7} {'% of raw':>9}")
-    print("-" * 72)
-    for cat, count in errors.items():
-        pct = round(count / total_raw * 100, 1)
-        print(f"{cat:<53} {count:>7} {pct:>8}%")
-
-    print("""
-Concrete example (Emoji-only):
-  Input  : "smiley face heart heart fire" (3 emoji-only comment)
-  Output : DROPPED -- clean_text() strips all non-word chars, leaving "".
-  Fix    : Run VADER on the ORIGINAL text BEFORE clean_text(), or use
-           the 'emoji' library to convert emojis to text first.
-
-Concrete example (Sarcasm):
-  Input  : "Wow amazing tutorial lol"
-  VADER  : compound +0.67 -> POSITIVE  (incorrect -- sarcastic tone)
-  Fix    : Flag comments with sarcasm markers for human review, or route
-           to a transformer model (e.g. RoBERTa fine-tuned on Twitter).
-
-Top 3 fixes (priority order):
-  1. [HIGH]   Emoji sentiment -- preserve emojis through to VADER
-  2. [MEDIUM] TikTok slang lexicon -- add custom word scores for slay, no cap, bussin
-  3. [LOW]    Sarcasm -- flag ambiguous comments for manual review
-""")
-
-    # ── Section 5 ────────────────────────────────────────────────────────────
-    print(f"\n{SEP}")
-    print("SECTION 5: USER EVALUATION  (fill in after running user study)")
-    print(SEP)
-    print("""
-Recruit 3-8 TikTok creators or viewers. Define 3 tasks:
-
-  Task 1: Upload a CSV and view the Dashboard.
-          Success = user sees sentiment chart without any help.
-
-  Task 2: Navigate to Insights and name the largest keyword cluster.
-          Success = user reads the cluster label correctly.
-
-  Task 3: Go to Recommendations and say one action they would take.
-          Success = user states a concrete, personalised next step.
-
-SUS Questionnaire (10 standard items, scale 1-5):
-  Give after each session. Score = (sum of adjusted scores) x 2.5
-  90-100 = A (Excellent)  |  70-89 = B (Good)  |  50-69 = C (OK)
-
-Record per participant:
-  - SUS score
-  - Tasks completed without help  (out of 3)
-  - Time to complete Task 1
-  - One direct quote
-
-Report: SUS score, task success rate (x/total), top 3 usability findings.
-""")
-
-    print("=" * 65)
-    print("EVALUATION COMPLETE -- results ready for slides")
-    print("=" * 65)
+    REPORT_FILE.write_text("\n".join(_report_lines), encoding="utf-8")
+    print(f"\nSlide-ready report written to {REPORT_FILE.relative_to(ROOT)}")
 
 
 if __name__ == "__main__":
