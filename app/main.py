@@ -135,7 +135,7 @@ st.markdown("""
 st.markdown(
     """
     <div class="top-nav-bar">
-        <span class="arrow-icon">→</span>
+        <span class="arrow-icon">←</span>
         <span>Click the menu on the left to navigate</span>
     </div>
     """,
