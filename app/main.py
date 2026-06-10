@@ -164,6 +164,7 @@ _defaults = {
     'auth_page':        'login', # which auth screen to show when logged out
     'current_page':     'Upload Data',
     'df_raw':           None,
+    'df_videos':        None,
     'df_analyzed':      None,
     'summary':          None,
     'keywords':         None,

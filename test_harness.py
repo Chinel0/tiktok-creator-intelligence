@@ -22,8 +22,9 @@ sys.path.insert(0, str(ROOT))
 from nlp.preprocessor import preprocess
 from nlp.sentiment import analyze_sentiment
 from nlp.keywords import extract_keywords
-# Import the real generator so the harness tests what the app actually does
+# Import the real app functions so the harness tests what the app actually does
 from app.components.recommendations import _generate_recommendations
+from app.components.upload import normalize_comment_columns, merge_video_metadata
 
 
 # Each entry: name -> (comments_csv, videos_csv or None)
@@ -40,24 +41,9 @@ DATASETS = {
     'PAUL (synthetic)':    ('PAUL_synthetic_data.csv', None),
 }
 
-# Same mapping the app uses in upload.py
-SCRAPED_TO_STANDARD = {
-    'comment_text': 'Comment Text',
-    'language': 'Comment Language',
-    'like_count': 'Comment Like Count',
-    'author_username': 'Author Nickname',
-}
-
 # Words that should never appear as the "topic" of a recommendation.
 # If one shows up, the recommendation is generic garbage - flag it.
 GENERIC_TOPICS = {'content', 'video', 'videos', 'more', 'want', 'make', 'thing', 'stuff'}
-
-
-def normalize_columns(df: pd.DataFrame) -> pd.DataFrame:
-    """Mirror of the app's column normalization (without streamlit)."""
-    if all(c in df.columns for c in SCRAPED_TO_STANDARD):
-        df = df.rename(columns=SCRAPED_TO_STANDARD)
-    return df
 
 
 def run_dataset(name: str, comments_file: str, videos_file: str | None) -> list[str]:
@@ -74,19 +60,25 @@ def run_dataset(name: str, comments_file: str, videos_file: str | None) -> list[
         return [f'{name}: comments file missing']
 
     df = pd.read_csv(comments_path, encoding='utf-8-sig')
-    df = normalize_columns(df)
+    df = normalize_comment_columns(df)
+    if df is None:
+        print('  FAILED - columns match neither accepted format')
+        return [f'{name}: column normalization failed']
     print(f'  Comments: {len(df)} rows from {comments_file}')
 
-    # ---- video metadata (join check + niche signal) ----
+    # ---- video metadata (uses the app's real merge function) ----
     videos = None
     if videos_file:
         videos_path = ROOT / 'data' / videos_file
         if videos_path.exists():
             videos = pd.read_csv(videos_path, encoding='utf-8-sig')
-            matched = len(set(df['video_id'].astype(str)) & set(videos['video_id'].astype(str))) \
-                if 'video_id' in df.columns else 0
+            df, matched = merge_video_metadata(df, videos)
             print(f'  Videos:   {len(videos)} rows from {videos_file} '
-                  f'(join match: {matched} video_ids)')
+                  f'(merged: {matched} comments matched)')
+            if matched == 0:
+                flags.append(f'{name}: video merge matched 0 comments')
+            if 'video_type' in df.columns and df['video_type'].isna().all():
+                flags.append(f'{name}: video_type empty after merge')
         else:
             print(f'  Videos:   MISSING file {videos_file}')
             flags.append(f'{name}: videos file missing')
