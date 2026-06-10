@@ -1,101 +1,75 @@
-# Synthetic Test Datasets for TikTok Creator Intelligence
+# Test Datasets for TikTok Creator Intelligence
 
 ## Overview
 
-8 personalized synthetic datasets, one for each beta tester. Each CSV contains realistic TikTok comments from a creator in their niche.
-
-**Total:** 8,266 comments across 8 creators
+Each beta tester gets **two files**: a comments CSV and a videos CSV.
+Upload both for the full analysis — the videos file is what unlocks
+niche-level insights (which of your content types performs best).
 
 ---
 
 ## Dataset Files
 
-| Creator  | Followers | Comments | Niches | File |
-|----------|-----------|----------|--------|------|
-| **Tera** | 1,315 | 627 | Lifestyle, gifts, God's love, lip sync | `TERA_synthetic_data.csv` |
-| **Yetunde** | 108 | 309 | Lifestyle, dancing, makeup | `YETUNDE_synthetic_data.csv` |
-| **Denzel** | 5,000 | 1,145 | Music, school, gaming | `DENZEL_synthetic_data.csv` |
-| **Wudh** | 7,000 | 895 | Asian culture, Germany, travel | `WUDH_synthetic_data.csv` |
-| **Esther** | 4,000 | 1,285 | Dancing, football, Kenya | `ESTHER_synthetic_data.csv` |
-| **Basti** | 8,000 | 1,574 | Berlin, travel, African food | `BASTI_synthetic_data.csv` |
-| **Judith** | 9,000 | 1,268 | Nigeria life, choir, insecurity | `JUDITH_synthetic_data.csv` |
-| **Paul** | 10,000 | 1,163 | Nature, biking, cooking | `PAUL_synthetic_data.csv` |
+| Creator  | Followers | Comments | Niches | Files |
+|----------|-----------|----------|--------|-------|
+| **Tera** | 1,315 | 627 | Lifestyle, gifts, God's love, lip sync | `TERA_synthetic_data.csv` + `TERA_synthetic_videos.csv` |
+| **Yetunde** | 108 | 300 | Makeup, dancing, lifestyle | `YETUNDE_synthetic_data.csv` + `YETUNDE_synthetic_videos.csv` |
+| **Denzel** | 5,000 | 1,311 | Music, school, gaming | `DENZEL_synthetic_data.csv` + `DENZEL_synthetic_videos.csv` |
+| **Wudh** | 7,000 | 1,067 | Germany, travel, Asian culture | `WUDH_synthetic_data.csv` + `WUDH_synthetic_videos.csv` |
+| **Esther** | 4,000 | 1,299 | Dancing, football, Kenya | `ESTHER_synthetic_data.csv` + `ESTHER_synthetic_videos.csv` |
+| **Basti** | 8,000 | 1,333 | African food, Berlin, travel | `BASTI_synthetic_data.csv` + `BASTI_synthetic_videos.csv` |
+| **Judith** | 9,000 | 1,118 | Motivation, dancing, choir, Lagos life | `JUDITH_synthetic_data.csv` + `JUDITH_synthetic_videos.csv` |
+| **Paul** | 10,000 | 1,013 | Cooking, nature, biking, fitness | `PAUL_synthetic_data.csv` + `PAUL_synthetic_videos.csv` |
+
+Note: Tera's files are her **real scraped data** (not synthetic).
 
 ---
 
 ## How to Use
 
-### For Each Tester
-
-1. **Download** your creator's CSV file
-   - Example: if you're testing with Tera's data, download `TERA_synthetic_data.csv`
-
-2. **Go to the app** 
-   - Click the link your creator provides (deployed Streamlit app)
-
-3. **Sign up** 
-   - Create an account with any username and password
-
+1. **Download** both of your creator's files (comments + videos)
+2. **Go to the app** (link your creator provides)
+3. **Sign up** with any username and password
 4. **Upload your data**
-   - Click "Upload Data" tab
-   - Click "Upload CSV" subtab
-   - Select your creator's CSV file
-   - Click "Run Analysis"
-
+   - Step 1: upload your **comments CSV**
+   - Step 2: upload your **videos CSV** (optional but strongly recommended)
+   - Step 3: click **Run Analysis**
 5. **Explore the results**
-   - **Dashboard**: Overall sentiment, top keywords, summary stats
-   - **Insights**: Detailed findings, keyword clusters, example comments
-   - **Recommendations**: Content ideas based on audience feedback
-   - **User Profile**: Your account and analysis history
-
-6. **Give feedback**
-   - Is the sentiment analysis accurate?
-   - Are the keywords actually relevant to the content?
-   - Do the recommendations make sense?
-   - What's missing or broken?
+   - **Dashboard**: overall sentiment, top keywords, summary stats
+   - **Insights**: detailed findings, keyword clusters, example comments
+   - **Recommendations**: which niche to lean on and why, what your audience asks for
+6. **Give feedback** (see questions below)
 
 ---
 
-## Data Structure
+## File Structure
 
-Each CSV has these columns:
+**Comments CSV:**
+```
+Comment Text          — the actual comment
+Comment Language      — language code (en = English)
+Comment Like Count    — likes on this comment
+Author Nickname       — commenter's handle
+video_type            — content category
+comment_date          — when posted
+video_id              — which video it belongs to
+```
 
+**Videos CSV** (same schema as the real scraper output):
 ```
-Comment Text          — The actual comment
-Comment Language      — Language code (en = English)
-Comment Like Count    — How many people liked this comment
-Author Nickname       — Commenter's TikTok handle
-video_type           — Content category (Lifestyle, Music, etc.)
-comment_date         — When the comment was posted
-video_id             — Which video it's attached to
-```
-
-**Example rows:**
-```
-"love your vibe"     | en | 1 | user_5432 | Lifestyle & Vlog | 2025-10-02T... | 760000...
-"fire track"         | en | 0 | user_1829 | Engagement...     | 2025-10-03T... | 760000...
-"same"               | en | 2 | user_7654 | Student Life      | 2025-10-04T... | 760000...
+video_id, description, view_count, like_count, comment_count,
+share_count, upload_date, hashtags, url, scraped_at, video_type
 ```
 
 ---
 
-## Realistic Features
+## What Makes This Data Realistic
 
-✅ **Emoji-heavy** — Real TikTok comments are short and emoji-loaded  
-✅ **Diverse** — Mix of short words, questions, long comments  
-✅ **Low engagement** — Most comments get 0 likes (realistic for follower size)  
-✅ **Themed content** — Comments match each creator's actual niches  
-✅ **Volume** — Enough comments to show real patterns (300-1500 per creator)  
-
----
-
-## Why Synthetic Data?
-
-- ✅ No privacy concerns (not real user data)
-- ✅ Reproducible testing (consistent results)
-- ✅ Personalized (each tester's content niche)
-- ✅ Fast feedback loop (test before deployment)
-- ✅ Realistic patterns (based on actual TikTok data)
+- **Niche-specific comments** — makeup comments on makeup videos, travel comments on travel videos
+- **Real engagement differences** — each creator has content types that genuinely outperform others, like real accounts do
+- **Explicit audience requests** — comments like "teach me german", "recipe please", "tutorial for this choreo" at realistic rates
+- **Mild critiques** — a small share of comments mention fixable issues (audio, captions, length)
+- **Realistic like counts** — most comments get 0 likes, a few get many
 
 ---
 
@@ -103,26 +77,14 @@ video_id             — Which video it's attached to
 
 After testing, please answer:
 
-1. **Sentiment**: Did the positive/negative/neutral percentages seem right?
-2. **Keywords**: Were the top keywords actually relevant to your content?
-3. **Recommendations**: Did the content ideas make sense?
-4. **UI/UX**: Was the app easy to use?
-5. **Bugs**: Did anything crash or break?
-6. **Overall**: Would this help you understand your audience better?
+1. **Sentiment**: did the positive/negative/neutral percentages seem right?
+2. **Keywords**: were the top keywords actually relevant to the content?
+3. **Recommendations**: were they specific and actionable — could a real creator change their content plan based on them?
+4. **Niche insights**: did the app correctly identify which content type performs best?
+5. **UI/UX**: was the app easy to use?
+6. **Bugs**: did anything crash or break?
 
 ---
 
-## Notes for Creators
-
-- These are **simulated comments**, not your real audience
-- The NLP analysis is the real part (VADER sentiment + TF-IDF keywords)
-- For actual scraping, you'll either:
-  - Use the CSV upload flow (no browser automation)
-  - Or use the local scraper scripts (for your own account)
-- The app currently does **not** deploy the live TikTok scraper (that requires TikTok API access)
-
----
-
-**Generated:** June 2026  
-**For:** TikTok Creator Intelligence Beta Testing  
-**Status:** Ready to use with Streamlit Cloud deployment
+**Generated:** June 2026
+**For:** TikTok Creator Intelligence Beta Testing
