@@ -249,13 +249,10 @@ def _show_login():
 
     st.markdown(
         "Don't have an account? "
-        '<a onclick="document.querySelector(\'[data-testid=stButton]\').click()" style="color:#4361EE; font-weight:600; cursor:pointer; text-decoration:none;">'
+        '<a href="?go=register" target="_top" style="color:#4361EE; font-weight:600; text-decoration:none;">'
         "register here</a>",
         unsafe_allow_html=True,
     )
-    if st.button("", key="login_register_btn"):
-        st.session_state.auth_page = "register"
-        st.rerun()
 
 
 def _show_register():
@@ -287,13 +284,10 @@ def _show_register():
 
     st.markdown(
         "Already have an account? "
-        '<a onclick="document.querySelector(\'[data-testid=stButton]\').click()" style="color:#4361EE; font-weight:600; cursor:pointer; text-decoration:none;">'
+        '<a href="?go=login" target="_top" style="color:#4361EE; font-weight:600; text-decoration:none;">'
         "login here</a>",
         unsafe_allow_html=True,
     )
-    if st.button("", key="register_login_btn"):
-        st.session_state.auth_page = "login"
-        st.rerun()
 
 
 # ── Page router ───────────────────────────────────────────────────────────────
