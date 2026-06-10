@@ -1,6 +1,6 @@
 """
 upload.py  —  Page 1: Upload Data
-CSV upload only - accepts both synthetic data format and scraped data format
+CSV upload flow - accepts both synthetic test data and scraped data formats
 """
 
 import os
