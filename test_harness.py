@@ -104,6 +104,9 @@ def run_dataset(name: str, comments_file: str, videos_file: str | None,
     for cname, words in clusters.items():
         if words:
             print(f'    {cname}: {words[:6]}')
+        for w in words:
+            if all(tok in GENERIC_TOPICS for tok in w.split()):
+                flags.append(f'{name}: generic keyword "{w}" survived into cluster {cname}')
 
     # ---- niche engagement signal (needs video metadata or video_type) ----
     _print_niche_signal(df_analyzed, videos, name, flags, expect_signal)
