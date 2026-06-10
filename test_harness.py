@@ -25,6 +25,7 @@ from nlp.keywords import extract_keywords
 # Import the real app functions so the harness tests what the app actually does
 from app.components.recommendations import _generate_recommendations
 from app.components.upload import normalize_comment_columns, merge_video_metadata
+from nlp.niche_analyzer import analyze_niches
 
 
 # Each entry: name -> (comments_csv, videos_csv or None, expect_niche_signal)
@@ -122,38 +123,35 @@ def run_dataset(name: str, comments_file: str, videos_file: str | None,
 
 def _print_niche_signal(df_analyzed: pd.DataFrame, videos, name: str, flags: list,
                         expect_signal: bool = False):
-    """Show per-niche engagement so we can verify real signal exists."""
-    agg = None
-    if videos is not None and 'video_type' in videos.columns:
-        agg = videos.groupby('video_type').agg(
-            videos=('video_id', 'count'),
-            avg_views=('view_count', 'mean'),
-            avg_comments=('comment_count', 'mean'),
-        ).round(1).sort_values('avg_comments', ascending=False)
-        print('\n  Niche signal (from video metadata):')
-        print('    ' + agg.to_string().replace('\n', '\n    '))
-        signal_col = 'avg_comments'
-    elif 'video_type' in df_analyzed.columns and 'video_id' in df_analyzed.columns:
-        agg = df_analyzed.groupby('video_type').agg(
-            videos=('video_id', 'nunique'),
-            comments=('video_id', 'count'),
-        )
-        agg['comments_per_video'] = (agg['comments'] / agg['videos']).round(1)
-        agg = agg.sort_values('comments_per_video', ascending=False)
-        print('\n  Niche signal (from comments only - no video metadata):')
-        print('    ' + agg.to_string().replace('\n', '\n    '))
-        signal_col = 'comments_per_video'
-    else:
-        print('\n  Niche signal: NONE (no video_type / video_id available)')
+    """Run the real niche analyzer and verify signal exists."""
+    analysis = analyze_niches(df_analyzed, videos)
+
+    if analysis is None:
+        print('\n  Niche analysis: NONE (no video_type available)')
         flags.append(f'{name}: no niche data at all')
         return
 
+    src = 'video metadata' if analysis['has_video_metadata'] else 'comments only'
+    print(f'\n  Niche analysis (from {src}):')
+    header = (f'    {"niche":24} {"videos":>6} {"com/vid":>8} {"avg_views":>10} '
+              f'{"disc/1k":>8} {"pos%":>6} {"passion%":>9}')
+    print(header)
+    for t in analysis['ranked']:
+        m = analysis['niches'][t]
+        views = m['avg_views'] if m['avg_views'] is not None else '-'
+        disc = m['discussion_per_1k'] if m['discussion_per_1k'] is not None else '-'
+        print(f'    {t:24} {m["videos"]:>6} {m["comments_per_video"]:>8} '
+              f'{str(views):>10} {str(disc):>8} {m["positive_pct"]:>6} {m["passion_pct"]:>9}')
+
+    print(f'    -> best: {analysis["best"]} | weakest: {analysis["weakest"]} | '
+          f'engagement ratio: {analysis["engagement_ratio"]}x | '
+          f'views ratio: {analysis["views_ratio"]}x | most loved: {analysis["most_loved"]}')
+
     # For generated data we require a real winner niche (>= 2x the weakest)
-    if expect_signal and agg is not None and len(agg) > 1:
-        top, bottom = agg[signal_col].max(), max(agg[signal_col].min(), 0.1)
-        if top / bottom < 2:
-            flags.append(f'{name}: weak niche signal (best {top} vs worst {bottom} '
-                         f'comments/video, ratio {top / bottom:.1f}x < 2x)')
+    if expect_signal:
+        ratio = analysis['engagement_ratio']
+        if not analysis['best'] or ratio is None or ratio < 2:
+            flags.append(f'{name}: weak niche signal (engagement ratio {ratio}x < 2x)')
 
 
 def _flag_if_generic(name: str, text: str, flags: list):

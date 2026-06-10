@@ -14,9 +14,10 @@ from pathlib import Path
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', '..'))
 
-from nlp.preprocessor import preprocess
-from nlp.sentiment    import analyze_sentiment
-from nlp.keywords     import extract_keywords
+from nlp.preprocessor    import preprocess
+from nlp.sentiment       import analyze_sentiment
+from nlp.keywords        import extract_keywords
+from nlp.niche_analyzer  import analyze_niches
 
 ROOT          = Path(__file__).parent.parent.parent
 REQUIRED_COLS = ['Comment Text', 'Comment Language', 'Comment Like Count', 'Author Nickname']
@@ -92,13 +93,15 @@ def run_pipeline(df: pd.DataFrame, videos_df: pd.DataFrame | None = None):
         df_clean             = preprocess(df)
         df_analyzed, summary = analyze_sentiment(df_clean)
         keywords, clusters   = extract_keywords(df_analyzed)
+        niche_analysis       = analyze_niches(df_analyzed, videos_df)
 
-    st.session_state['df_raw']      = df
-    st.session_state['df_videos']   = videos_df
-    st.session_state['df_analyzed'] = df_analyzed
-    st.session_state['summary']     = summary
-    st.session_state['keywords']    = keywords
-    st.session_state['clusters']    = clusters
+    st.session_state['df_raw']         = df
+    st.session_state['df_videos']      = videos_df
+    st.session_state['df_analyzed']    = df_analyzed
+    st.session_state['summary']        = summary
+    st.session_state['keywords']       = keywords
+    st.session_state['clusters']       = clusters
+    st.session_state['niche_analysis'] = niche_analysis
 
 
 # ── File reading helper ────────────────────────────────────────────────────────
