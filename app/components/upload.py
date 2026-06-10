@@ -46,20 +46,8 @@ def run_pipeline(df: pd.DataFrame):
 # ── Page ───────────────────────────────────────────────────────────────────────
 
 def show_upload_page():
-    st.markdown(
-        """<style>
-        .stTabs [data-baseweb="tab-list"] button [data-testid="stMarkdownContainer"] p {
-            font-size: 1rem;
-            color: #4361EE;
-            font-weight: 600;
-        }
-        </style>""",
-        unsafe_allow_html=True,
-    )
-
-    st.title("📊 Upload Your Comment Data")
+    st.title("Upload Your Comment Data")
     st.markdown("Upload a CSV file of TikTok comments to analyze your audience sentiment and keywords.")
-    st.markdown("---")
 
     uploaded = st.file_uploader(
         "Drag and drop your CSV here, or click Browse",
@@ -93,7 +81,7 @@ def show_upload_page():
             st.markdown(
                 """
                 <div style="background-color:#f0f4ff; padding:20px; border-radius:8px; border-left:4px solid #4361EE;">
-                <h3 style="color:#4361EE; margin-top:0;">📌 How to get your data</h3>
+                <h3 style="color:#4361EE; margin-top:0;">How to get your data</h3>
 
                 <p><strong>Option 1:</strong> Use your scraped TikTok data</p>
                 <ul>

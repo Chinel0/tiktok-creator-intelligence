@@ -1,23 +1,12 @@
 """
 main.py  —  TikTok Creator Intelligence
-Entry point for the Streamlit app.
-
-Run with:
-    streamlit run app/main.py
-
-Navigation:
-  Not logged in  →  Login / Register pages
-  Logged in      →  Upload Data, User Profile, Dashboard, Insights, Recommendations
+Entry point for the Streamlit app with top navigation bar.
 """
 
 import os
 import sys
-
 import streamlit as st
 
-# ── Path setup ────────────────────────────────────────────────────────────────
-# Add the project root (one level above app/) to sys.path so that all imports
-# like `from nlp.preprocessor import ...` work correctly.
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 if ROOT not in sys.path:
     sys.path.insert(0, ROOT)
@@ -34,41 +23,97 @@ st.set_page_config(
     page_title="TikTok Creator Intelligence",
     page_icon="🎵",
     layout="wide",
-    initial_sidebar_state="expanded",
+    initial_sidebar_state="collapsed",
 )
 
 # ── Global CSS ────────────────────────────────────────────────────────────────
 st.markdown("""
 <style>
-    /* Clean white background */
-    .stApp { background-color: #f1f5f9; }
-
-    /* Hide the default Streamlit header decoration */
-    [data-testid="stDecoration"] { display: none; }
-
-    /* Sidebar styling */
-    [data-testid="stSidebar"] {
-        background-color: white;
-        border-right: 1px solid #e2e8f0;
-    }
-
-    /* Make radio buttons look like nav items */
-    div[role="radiogroup"] label {
-        padding: 8px 12px;
-        border-radius: 8px;
-        margin-bottom: 4px;
-        cursor: pointer;
-        font-weight: 500;
-    }
-    div[role="radiogroup"] label:hover {
-        background: #ede9fe;
-        color: #6366f1;
-    }
-
-    /* ── Brand blue to match Figma prototype ── */
+    /* Brand colors */
     :root { --brand: #4361EE; --brand-dark: #3451D1; }
 
-    /* ALL primary buttons — Streamlit 1.30+ uses data-testid */
+    /* Clean background */
+    .stApp { background-color: #f8fafb; }
+    [data-testid="stDecoration"] { display: none; }
+
+    /* Hide default sidebar */
+    [data-testid="stSidebar"] { display: none; }
+
+    /* TOP NAVIGATION BAR */
+    .nav-bar {
+        background-color: #4361EE;
+        padding: 16px 24px;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 24px;
+        border-radius: 0;
+    }
+
+    .nav-brand {
+        font-size: 20px;
+        font-weight: 700;
+        color: white;
+        display: flex;
+        align-items: center;
+        gap: 12px;
+    }
+
+    .nav-brand-text {
+        display: flex;
+        flex-direction: column;
+        gap: 2px;
+    }
+
+    .nav-brand-main { font-size: 18px; }
+    .nav-brand-sub { font-size: 12px; opacity: 0.9; }
+
+    /* Navigation tabs (top) */
+    .nav-tabs {
+        display: flex;
+        gap: 8px;
+        flex-wrap: wrap;
+        align-items: center;
+    }
+
+    .nav-tab {
+        padding: 8px 14px;
+        border-radius: 6px;
+        font-size: 14px;
+        font-weight: 500;
+        cursor: pointer;
+        color: white;
+        background-color: rgba(255, 255, 255, 0.2);
+        border: none;
+        transition: all 0.2s;
+    }
+
+    .nav-tab:hover {
+        background-color: rgba(255, 255, 255, 0.3);
+    }
+
+    .nav-tab.active {
+        background-color: white;
+        color: #4361EE;
+    }
+
+    .nav-logout {
+        padding: 8px 16px;
+        border-radius: 6px;
+        font-size: 14px;
+        font-weight: 500;
+        color: white;
+        background-color: rgba(255, 255, 255, 0.2);
+        border: none;
+        cursor: pointer;
+        transition: all 0.2s;
+    }
+
+    .nav-logout:hover {
+        background-color: rgba(255, 255, 255, 0.3);
+    }
+
+    /* Primary buttons */
     [data-testid="baseButton-primary"],
     [data-testid="baseButton-primary"]:focus {
         background-color: #4361EE !important;
@@ -80,16 +125,13 @@ st.markdown("""
         background-color: #3451D1 !important;
     }
 
-    /* Sidebar TikTok title colour */
-    [data-testid="stSidebar"] h2 { color: #4361EE !important; }
-
-    /* Remove default padding on metric labels */
+    /* Metrics styling */
     [data-testid="stMetricLabel"] p { font-weight: 600; }
 
-    /* Clear visible borders on input fields */
+    /* Input fields */
     div[data-baseweb="input"],
     div[data-baseweb="textarea"] {
-        border: 1.5px solid #d1d5db !important;
+        border: 1.5px solid #e2e8f0 !important;
         border-radius: 8px !important;
         background-color: white !important;
     }
@@ -98,11 +140,17 @@ st.markdown("""
         border-color: #4361EE !important;
         box-shadow: 0 0 0 3px rgba(67,97,238,0.15) !important;
     }
-    /* Remove the inner input's own border so only the wrapper shows */
     div[data-baseweb="input"] input,
     div[data-baseweb="textarea"] textarea {
         border: none !important;
         background-color: transparent !important;
+    }
+
+    /* Content padding */
+    .main-content {
+        padding: 0 24px;
+        max-width: 1400px;
+        margin: 0 auto;
     }
 </style>
 """, unsafe_allow_html=True)
@@ -111,24 +159,22 @@ st.markdown("""
 init_db()
 
 # ── Session state defaults ────────────────────────────────────────────────────
-# These keys are used across all pages; set them once here so no page
-# has to guard against KeyError.
 _defaults = {
-    'user':             None,    # dict of logged-in user, or None
-    'auth_page':        'login', # which auth screen to show when logged out
-    'current_page':     'Upload Data',
-    'df_raw':           None,
-    'df_analyzed':      None,
-    'summary':          None,
-    'keywords':         None,
-    'clusters':         None,
-    '_analysis_saved':  False,   # prevent duplicate DB writes per session
+    'user': None,
+    'auth_page': 'login',
+    'current_page': 'Upload Data',
+    'df_raw': None,
+    'df_analyzed': None,
+    'summary': None,
+    'keywords': None,
+    'clusters': None,
+    '_analysis_saved': False,
 }
 for key, default in _defaults.items():
     if key not in st.session_state:
         st.session_state[key] = default
 
-# Handle ?go=register / ?go=login links from auth forms
+# Handle query params for auth
 _go = st.query_params.get("go", "")
 if _go == "register":
     st.session_state.auth_page = "register"
@@ -138,56 +184,16 @@ elif _go == "login":
     st.query_params.clear()
 
 
-# ── Sidebar ───────────────────────────────────────────────────────────────────
-with st.sidebar:
-    st.markdown(
-        """<h2 style="color:#4361EE; margin-bottom:4px;">TikTok</h2>
-           <h3 style="margin-top:0; color:#1f2937;">Intelligence</h3>""",
-        unsafe_allow_html=True,
-    )
-    st.markdown("---")
-
-    if st.session_state.user:
-        # ── Logged-in sidebar ──────────────────────────────────────────────
-        uname = st.session_state.user['username']
-        st.markdown(
-            f"""<div style="background:#eef1fd; border-radius:8px; padding:10px 14px;
-                margin-bottom:16px;">
-                <span style="font-size:0.85rem; color:#6b7280;">Logged in as</span><br>
-                <strong style="color:#4361EE;">@{uname}</strong>
-            </div>""",
-            unsafe_allow_html=True,
-        )
-
-        page = st.radio(
-            "Navigate",
-            ["Upload Data", "User Profile", "Dashboard", "Insights", "Recommendations"],
-            key="nav_radio",
-        )
-
-        st.markdown("<br>", unsafe_allow_html=True)
-        if st.button("Logout", use_container_width=True):
-            st.session_state.user            = None
-            st.session_state.auth_page       = 'login'
-            st.session_state._analysis_saved = False
-            st.rerun()
-
-    else:
-        # Logged-out — no nav shown in sidebar; auth controlled by session state
-        page = st.session_state.get('auth_page', 'login')
-
-
-# ── Auth pages ────────────────────────────────────────────────────────────────
-# Must be defined BEFORE the router calls them.
+# ── AUTH PAGES (when not logged in) ───────────────────────────────────────────
 
 def _show_login():
-    st.title("Welcome back")
+    st.title("Welcome Back")
     st.markdown("Log in to access your TikTok Creator Intelligence dashboard.")
 
     with st.form("login_form"):
         username = st.text_input("Username")
         password = st.text_input("Password", type="password")
-        submit   = st.form_submit_button("Login", type="primary", use_container_width=True)
+        submit = st.form_submit_button("Login", type="primary", use_container_width=True)
 
     if submit:
         if not username or not password:
@@ -195,7 +201,7 @@ def _show_login():
         else:
             user = login_user(username, password)
             if user:
-                st.session_state.user            = user
+                st.session_state.user = user
                 st.session_state._analysis_saved = False
                 st.rerun()
             else:
@@ -210,15 +216,15 @@ def _show_login():
 
 
 def _show_register():
-    st.title("Create an account")
+    st.title("Create an Account")
     st.markdown("Register to save your analyses and track progress over time.")
 
     with st.form("register_form"):
-        username   = st.text_input("Username")
+        username = st.text_input("Username")
         tiktok_hdl = st.text_input("TikTok handle (e.g. @ichbinnelo)")
-        password   = st.text_input("Password", type="password")
-        confirm    = st.text_input("Confirm password", type="password")
-        submit     = st.form_submit_button("Register", type="primary", use_container_width=True)
+        password = st.text_input("Password", type="password")
+        confirm = st.text_input("Confirm password", type="password")
+        submit = st.form_submit_button("Register", type="primary", use_container_width=True)
 
     if submit:
         if not username or not password or not confirm:
@@ -244,19 +250,61 @@ def _show_register():
     )
 
 
-# ── Page router ───────────────────────────────────────────────────────────────
+# ── MAIN APP (when logged in) ─────────────────────────────────────────────────
+
 if st.session_state.user:
-    if page == "Upload Data":
+    # Top navigation bar
+    col_brand, col_nav, col_user = st.columns([2, 3, 1])
+
+    with col_brand:
+        st.markdown(
+            '<div class="nav-brand"><div class="nav-brand-text"><div class="nav-brand-main">TikTok</div><div class="nav-brand-sub">Intelligence</div></div></div>',
+            unsafe_allow_html=True
+        )
+
+    with col_nav:
+        pages = ["Upload Data", "Dashboard", "Insights", "Recommendations", "User Profile"]
+
+        # Create buttons for each page
+        cols = st.columns(len(pages))
+        for i, page_name in enumerate(pages):
+            with cols[i]:
+                if st.button(
+                    page_name,
+                    key=f"nav_{page_name}",
+                    use_container_width=True,
+                ):
+                    st.session_state.current_page = page_name
+                    st.rerun()
+
+    with col_user:
+        if st.button("Logout", use_container_width=True, key="logout_btn"):
+            st.session_state.user = None
+            st.session_state.auth_page = 'login'
+            st.session_state._analysis_saved = False
+            st.rerun()
+
+    st.markdown("---")
+
+    # Main content area
+    st.markdown('<div class="main-content">', unsafe_allow_html=True)
+
+    # Route to appropriate page
+    if st.session_state.current_page == "Upload Data":
         show_upload_page()
-    elif page == "User Profile":
-        show_profile_page()
-    elif page == "Dashboard":
+    elif st.session_state.current_page == "Dashboard":
         show_dashboard_page()
-    elif page == "Insights":
+    elif st.session_state.current_page == "Insights":
         show_insights_page()
-    elif page == "Recommendations":
+    elif st.session_state.current_page == "Recommendations":
         show_recommendations_page()
+    elif st.session_state.current_page == "User Profile":
+        show_profile_page()
+
+    st.markdown('</div>', unsafe_allow_html=True)
+
 else:
+    # Not logged in — show auth pages
     if st.session_state.get('auth_page', 'login') == 'register':
         _show_register()
     else:
