@@ -32,7 +32,11 @@ random.seed(42)
 DATA = Path(__file__).parent / 'data'
 
 SHORT_REACTIONS = ['yes', 'wow', 'omg', 'lol', 'same', 'love', 'fire', 'goals',
-                   'so cool', 'obsessed', 'no way', 'this made my day']
+                   'so cool', 'obsessed', 'no way', 'this made my day',
+                   '🔥🔥🔥', '😍😍', '❤️❤️❤️', '😭❤️', '👏👏', '💯', '🤩✨']
+
+# Appended to ~35% of text comments - real TikTok comments are emoji-heavy
+EMOJIS = ['🔥', '😍', '❤️', '✨', '😭', '👏', '🙌', '💯', '😂', '🤩']
 
 CRITIQUES = ['the audio is a bit low on this one', 'video is too short make it longer',
              'the captions are hard to read', 'camera is shaky here',
@@ -275,12 +279,19 @@ def comment_like_count() -> int:
 def pick_comment(niche: dict) -> str:
     r = random.random()
     if r < 0.28:
-        return random.choice(SHORT_REACTIONS)
-    if r < 0.45:                      # 17% explicit requests
-        return random.choice(niche['asks'])
-    if r < 0.50:                      # 5% mild critiques
-        return random.choice(CRITIQUES)
-    return random.choice(niche['talk'])
+        text = random.choice(SHORT_REACTIONS)
+    elif r < 0.45:                    # 17% explicit requests
+        text = random.choice(niche['asks'])
+    elif r < 0.50:                    # 5% mild critiques
+        text = random.choice(CRITIQUES)
+    else:
+        text = random.choice(niche['talk'])
+
+    # ~35% of text comments get emojis appended, like real TikTok comments.
+    # VADER reads emojis for sentiment, so this exercises that path too.
+    if text and not any(e in text for e in EMOJIS) and random.random() < 0.35:
+        text += ' ' + ''.join(random.choices(EMOJIS, k=random.randint(1, 2)))
+    return text
 
 
 def generate_creator(name: str, cfg: dict, base_video_id: int) -> tuple:

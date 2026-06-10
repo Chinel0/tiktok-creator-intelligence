@@ -252,3 +252,9 @@ def _show_preview_and_stats(df: pd.DataFrame):
             st.metric("English Comments", eng_count)
         else:
             st.metric("English Comments", "—")
+
+    if 'Comment Language' in df.columns:
+        non_eng = len(df) - (df['Comment Language'].astype(str).str.lower() == 'en').sum()
+        if non_eng > 0:
+            st.caption(f"ℹ️ {non_eng} non-English comments will be excluded from the "
+                       f"analysis — automatic translation is on the roadmap.")

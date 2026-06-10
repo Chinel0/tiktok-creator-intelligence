@@ -66,6 +66,7 @@ share_count, upload_date, hashtags, url, scraped_at, video_type
 ## What Makes This Data Realistic
 
 - **Niche-specific comments** — makeup comments on makeup videos, travel comments on travel videos
+- **Emoji-heavy** — ~35% of comments carry emojis (🔥😍❤️), like real TikTok comment sections
 - **Real engagement differences** — each creator has content types that genuinely outperform others, like real accounts do
 - **Explicit audience requests** — comments like "teach me german", "recipe please", "tutorial for this choreo" at realistic rates
 - **Mild critiques** — a small share of comments mention fixable issues (audio, captions, length)
