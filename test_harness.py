@@ -1,0 +1,189 @@
+"""
+test_harness.py
+Local verification harness: runs the SAME pipeline the app runs on every
+dataset and prints exactly what each tester would see on the
+Recommendations page.
+
+Run before every push:
+    python test_harness.py            # all datasets
+    python test_harness.py WUDH       # one dataset (name match)
+
+Nothing in here is deployed - it is a development tool only.
+"""
+
+import sys
+from pathlib import Path
+
+import pandas as pd
+
+ROOT = Path(__file__).parent
+sys.path.insert(0, str(ROOT))
+
+from nlp.preprocessor import preprocess
+from nlp.sentiment import analyze_sentiment
+from nlp.keywords import extract_keywords
+# Import the real generator so the harness tests what the app actually does
+from app.components.recommendations import _generate_recommendations
+
+
+# Each entry: name -> (comments_csv, videos_csv or None)
+DATASETS = {
+    'CHINELO (real)': ('comments_20260526_233400.csv', 'videos_merged.csv'),
+    'TERA (real)':    ('tera_comments.csv', 'tera_videos.csv'),
+    'TERA (synthetic)':    ('TERA_synthetic_data.csv', None),
+    'YETUNDE (synthetic)': ('YETUNDE_synthetic_data.csv', None),
+    'DENZEL (synthetic)':  ('DENZEL_synthetic_data.csv', None),
+    'WUDH (synthetic)':    ('WUDH_synthetic_data.csv', None),
+    'ESTHER (synthetic)':  ('ESTHER_synthetic_data.csv', None),
+    'BASTI (synthetic)':   ('BASTI_synthetic_data.csv', None),
+    'JUDITH (synthetic)':  ('JUDITH_synthetic_data.csv', None),
+    'PAUL (synthetic)':    ('PAUL_synthetic_data.csv', None),
+}
+
+# Same mapping the app uses in upload.py
+SCRAPED_TO_STANDARD = {
+    'comment_text': 'Comment Text',
+    'language': 'Comment Language',
+    'like_count': 'Comment Like Count',
+    'author_username': 'Author Nickname',
+}
+
+# Words that should never appear as the "topic" of a recommendation.
+# If one shows up, the recommendation is generic garbage - flag it.
+GENERIC_TOPICS = {'content', 'video', 'videos', 'more', 'want', 'make', 'thing', 'stuff'}
+
+
+def normalize_columns(df: pd.DataFrame) -> pd.DataFrame:
+    """Mirror of the app's column normalization (without streamlit)."""
+    if all(c in df.columns for c in SCRAPED_TO_STANDARD):
+        df = df.rename(columns=SCRAPED_TO_STANDARD)
+    return df
+
+
+def run_dataset(name: str, comments_file: str, videos_file: str | None) -> list[str]:
+    """Run the full pipeline on one dataset. Returns list of red flags found."""
+    flags = []
+    print()
+    print('=' * 70)
+    print(f'  {name}')
+    print('=' * 70)
+
+    comments_path = ROOT / 'data' / comments_file
+    if not comments_path.exists():
+        print(f'  SKIPPED - file not found: {comments_file}')
+        return [f'{name}: comments file missing']
+
+    df = pd.read_csv(comments_path, encoding='utf-8-sig')
+    df = normalize_columns(df)
+    print(f'  Comments: {len(df)} rows from {comments_file}')
+
+    # ---- video metadata (join check + niche signal) ----
+    videos = None
+    if videos_file:
+        videos_path = ROOT / 'data' / videos_file
+        if videos_path.exists():
+            videos = pd.read_csv(videos_path, encoding='utf-8-sig')
+            matched = len(set(df['video_id'].astype(str)) & set(videos['video_id'].astype(str))) \
+                if 'video_id' in df.columns else 0
+            print(f'  Videos:   {len(videos)} rows from {videos_file} '
+                  f'(join match: {matched} video_ids)')
+        else:
+            print(f'  Videos:   MISSING file {videos_file}')
+            flags.append(f'{name}: videos file missing')
+
+    # ---- pipeline (exactly what the app runs) ----
+    df_clean = preprocess(df)
+    df_analyzed, summary = analyze_sentiment(df_clean)
+    keywords, clusters = extract_keywords(df_analyzed)
+    keep, improve, ideas = _generate_recommendations(summary, keywords, clusters)
+
+    print(f'\n  Sentiment: {summary["positive"]}% pos / '
+          f'{summary["neutral"]}% neu / {summary["negative"]}% neg '
+          f'({summary["total"]} analyzed)')
+
+    print(f'  Top keywords: {", ".join(w for w, _ in keywords[:8])}')
+
+    print('\n  Clusters:')
+    for cname, words in clusters.items():
+        if words:
+            print(f'    {cname}: {words[:6]}')
+
+    # ---- niche engagement signal (needs video metadata or video_type) ----
+    _print_niche_signal(df_analyzed, videos, name, flags)
+
+    # ---- the recommendations a tester would actually read ----
+    print('\n  --- RECOMMENDATIONS PAGE OUTPUT ---')
+    for section, recs in [('POST MORE', keep), ('IMPROVE', improve)]:
+        for r in recs:
+            print(f'  [{section}] {r["title"]}')
+            print(f'       Why: {r["reason"]}')
+            _flag_if_generic(name, r['title'] + ' ' + r['reason'], flags)
+    for idea in ideas:
+        print(f'  [IDEA-{idea["confidence"]}] {idea["title"]} - {idea["description"]}')
+        _flag_if_generic(name, idea['title'], flags)
+
+    return flags
+
+
+def _print_niche_signal(df_analyzed: pd.DataFrame, videos, name: str, flags: list):
+    """Show per-niche engagement so we can verify real signal exists."""
+    if videos is not None and 'video_type' in videos.columns:
+        agg = videos.groupby('video_type').agg(
+            videos=('video_id', 'count'),
+            avg_views=('view_count', 'mean'),
+            avg_comments=('comment_count', 'mean'),
+        ).round(1).sort_values('avg_comments', ascending=False)
+        print('\n  Niche signal (from video metadata):')
+        print('    ' + agg.to_string().replace('\n', '\n    '))
+    elif 'video_type' in df_analyzed.columns and 'video_id' in df_analyzed.columns:
+        agg = df_analyzed.groupby('video_type').agg(
+            videos=('video_id', 'nunique'),
+            comments=('video_id', 'count'),
+        )
+        agg['comments_per_video'] = (agg['comments'] / agg['videos']).round(1)
+        agg = agg.sort_values('comments_per_video', ascending=False)
+        print('\n  Niche signal (from comments only - no video metadata):')
+        print('    ' + agg.to_string().replace('\n', '\n    '))
+        spread = agg['comments_per_video'].max() - agg['comments_per_video'].min()
+        if len(agg) > 1 and spread < 2:
+            flags.append(f'{name}: niches have near-identical engagement '
+                         f'(spread {spread:.1f} comments/video) - no signal to find')
+    else:
+        print('\n  Niche signal: NONE (no video_type / video_id available)')
+        flags.append(f'{name}: no niche data at all')
+
+
+def _flag_if_generic(name: str, text: str, flags: list):
+    """Flag recommendations whose topic slot is a bare generic word."""
+    lowered = text.lower()
+    for word in GENERIC_TOPICS:
+        if f'"{word}"' in lowered:
+            flags.append(f'{name}: generic topic "{word}" in: {text[:70]}')
+
+
+def main():
+    only = sys.argv[1].upper() if len(sys.argv) > 1 else None
+    all_flags = []
+    ran = 0
+
+    for name, (comments_file, videos_file) in DATASETS.items():
+        if only and only not in name.upper():
+            continue
+        all_flags.extend(run_dataset(name, comments_file, videos_file))
+        ran += 1
+
+    print()
+    print('=' * 70)
+    print(f'  SUMMARY: {ran} datasets run, {len(all_flags)} red flags')
+    print('=' * 70)
+    for f in all_flags:
+        print(f'  FLAG: {f}')
+    if not all_flags:
+        print('  All clear.')
+
+    # Non-zero exit if flags found, so this can gate a push
+    sys.exit(1 if all_flags else 0)
+
+
+if __name__ == '__main__':
+    main()
