@@ -433,6 +433,112 @@ The nine category rules were written specifically for `@ichbinnelo`'s content. A
 
 ---
 
+## S8 — Evaluation & Quality (Deliverable 8)
+
+All results below were produced by `evaluation.py` against the **current** pipeline,
+using real data from `@ichbinnelo`. Re-run any time with `python evaluation.py`.
+
+### 1. Performance Metrics
+
+**Held-out test set:** 37 real comments, manually labelled
+(20 positive / 15 neutral / 2 negative) — `data/test_set_labels.csv`.
+Nothing in the pipeline is trained, so no train/test contamination is possible.
+
+| Metric | Score | Justification |
+|---|---|---|
+| Accuracy | 91.9% | Overall correctness; test set mirrors the real class balance |
+| Macro F1 | 94.1% | Weighs all 3 classes equally — the rare negative class matters most to creators |
+| Negative-class F1 | 100% | The high-value class: criticism detection (2/2 caught) |
+
+### 2. Benchmark Comparison
+
+Same test set for all three systems.
+
+| System | Accuracy | Macro F1 |
+|---|---|---|
+| Baseline A: Majority class (always positive) | 54.1% | 23.4% |
+| Baseline B: VADER on cleaned text (emojis stripped) | 86.5% | 84.3% |
+| **Full system: VADER emoji-aware (current)** | **91.9%** | **94.1%** |
+
+**Insight:** keeping emojis through to the sentiment analyser contributes
++5.4 pts accuracy and +9.8 pts Macro F1 over the ablated version — emoji-aware
+sentiment is the highest-value design decision in the pipeline. On TikTok,
+the emoji often *is* the sentiment. Gain over the naive baseline:
++37.8 pts accuracy, +70.7 pts Macro F1.
+
+### 3. Pipeline Efficiency
+
+Measured on the real dataset (1,211 comments + 161 videos), 10 full runs of the
+six-stage pipeline (merge, preprocess, sentiment, keywords, niche analysis,
+request extraction).
+
+| Scale | Avg Latency | Worst Case | Cost/Query | Est. Monthly |
+|---|---|---|---|---|
+| 100 queries/mo | 0.28 s | 0.34 s | €0.00 | €0.00 |
+| 1,000 queries/mo | 0.28 s | 0.34 s | €0.00 | €0.00 |
+| 10,000 queries/mo | 0.28 s | 0.34 s | €0.00 | €0.00 |
+
+Per-stage breakdown: sentiment 39% (bottleneck), requests 22%, niche 15%,
+preprocess 9%, keywords 8%, merge 7%. Throughput ≈ 4,300 comments/second.
+Cost is zero at every scale: fully local pipeline (lexicon + statistics),
+no API calls, no GPU. TikTok scraping (~55 min for 161 videos) is a one-time
+data-collection step, separate from the analysis pipeline.
+
+### 4. Error Analysis
+
+| Error Category | Count | Root Cause | Fix Priority |
+|---|---|---|---|
+| Non-English comments excluded | 267 / 1,211 (22.0%) | Only German was translated at scrape time; rest is dropped | HIGH |
+| …of which langdetect false positives | 142 / 267 | 1–2 word comments ("wow") misdetected as other languages | HIGH |
+| Test-set misclassifications | 3 / 37 (8.1%) | Neutral/positive boundary — the ±0.05 compound threshold | MEDIUM |
+| Hype slang scored negative | 1 / 3 slang comments | VADER lexicon predates Gen-Z usage of "hard/crazy/sick" as praise | MEDIUM |
+| Potential sarcasm scored positive | 5 / 1,211 (0.4%) | Lexicon scoring cannot read tone | LOW |
+
+**Concrete misclassified examples** (full system vs manual label):
+- "uhh can u like my video now" — labelled neutral, predicted positive
+- "Teamwork 🎀 followed right away 💝🥰🫶🏽" — labelled positive, predicted neutral
+- "boosting! ☘️" — labelled neutral, predicted positive
+
+**Already fixed during development:**
+- Emoji-only comments were dropped in an early version (`clean_text` stripped
+  them to empty). Fixed: VADER now scores the *original* text. The ablation in
+  Section 2 quantifies the value of this fix (+5.4 pts accuracy).
+- Generic keyword garbage ("content" recommended as a topic) was fixed with a
+  platform-word filter and token-level cluster seeds.
+
+**Top fixes, prioritized:**
+1. **[HIGH]** Trust short ASCII-only comments as English instead of dropping
+   them on langdetect's guess — recovers ~142 comments at zero risk.
+2. **[MEDIUM]** Add custom VADER lexicon entries for TikTok hype slang
+   ("hard", "crazy", "sick", "dead" → positive in this domain).
+3. **[LOW]** Flag sarcasm-marker comments for review instead of trusting the
+   positive score (or swap to `cardiffnlp/twitter-roberta-base-sentiment`).
+
+### 5. User Evaluation
+
+**Study design:** 8 real TikTok creators (108–10,000 followers — the exact
+target group), each with a personalised dataset pair (comments + videos CSV).
+Testers follow a 6-task guide (register → two-file upload → dashboard →
+insights → recommendations → profile) and then complete a Google Forms
+questionnaire: the standard 10-item SUS, app-specific NLP-quality questions
+(including *"I would actually change what I post next based on these
+recommendations"*), and open questions for direct quotes.
+
+**SUS scoring:** odd items score = answer − 1; even items score = 5 − answer;
+sum × 2.5 → 0–100 per participant; average across participants.
+Grade bands: ≥84.1 A+ · 80.8–84 A · 77.2–78.8 B+ · 74.1–77.1 B ·
+65–71 C · 51.7–62.6 D · <51.7 F (68 = industry average).
+
+**Task success rate:** tasks completed *without help* ÷ (3 tasks × participants).
+
+**Results:** *(to be filled in when tester responses are collected)*
+- SUS score: __ / 100 (Grade _)
+- Task success rate: __%
+- Top 3 usability findings: …
+- Quotes: …
+
+---
+
 ## Project Log
 
 > *Updated every time a task is completed — follow the journey.*

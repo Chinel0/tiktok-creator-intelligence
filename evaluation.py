@@ -45,16 +45,14 @@ from app.components.upload import normalize_comment_columns, merge_video_metadat
 DATA_FILE = ROOT / "data" / "comments_20260526_233400.csv"
 VIDEO_FILE = ROOT / "data" / "videos_merged.csv"
 TEST_FILE = ROOT / "data" / "test_set_labels.csv"
-REPORT_FILE = ROOT / "documents" / "deliverable8_results.md"
 
 SEP = "-" * 70
-_report_lines: list = []
 
 
 def out(line: str = ""):
-    """Print to console AND collect for the markdown report."""
+    """Console output. Results live in README.md section S8 - update the
+    tables there if numbers change after a re-run."""
     print(line)
-    _report_lines.append(line)
 
 
 # ── shared VADER ──────────────────────────────────────────────────────────────
@@ -335,12 +333,9 @@ def main():
     run_error_analysis(test)
 
     out("=" * 70)
-    out("Section 5 (user evaluation) is collected separately via the tester")
-    out("questionnaire - see documents/user_testing_questionnaire.md.")
+    out("Section 5 (user evaluation) is collected via the Google Forms")
+    out("questionnaire - scoring guide is in README.md section S8.")
     out("=" * 70)
-
-    REPORT_FILE.write_text("\n".join(_report_lines), encoding="utf-8")
-    print(f"\nSlide-ready report written to {REPORT_FILE.relative_to(ROOT)}")
 
 
 if __name__ == "__main__":
