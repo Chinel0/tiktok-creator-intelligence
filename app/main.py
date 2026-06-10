@@ -247,7 +247,7 @@ def _show_login():
             else:
                 st.error("Incorrect username or password.")
 
-    col1, col2 = st.columns([3, 1], gap="small")
+    col1, col2 = st.columns([1.5, 0.4], gap="small")
     with col1:
         st.markdown("Don't have an account?")
     with col2:
@@ -283,7 +283,7 @@ def _show_register():
             else:
                 st.error(msg)
 
-    col1, col2 = st.columns([3, 1], gap="small")
+    col1, col2 = st.columns([1.5, 0.4], gap="small")
     with col1:
         st.markdown("Already have an account?")
     with col2:
