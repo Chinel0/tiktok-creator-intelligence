@@ -46,13 +46,15 @@ def run_pipeline(df: pd.DataFrame):
 # ── Page ───────────────────────────────────────────────────────────────────────
 
 def show_upload_page():
-    st.title("Upload Your Comment Data")
-    st.markdown("Upload a CSV file of TikTok comments to analyze your audience sentiment and keywords.")
+    st.title("Analyze Your Comments")
+    st.markdown("3 simple steps to get insights about your audience")
+    st.markdown("---")
 
+    # STEP 1: Upload CSV
+    st.markdown("### 1️⃣ Upload Your CSV File")
     uploaded = st.file_uploader(
         "Drag and drop your CSV here, or click Browse",
         type=['csv', 'xlsx', 'xls'],
-        help=f"Accepts both standard and scraped data formats",
     )
 
     if uploaded is not None:
@@ -71,41 +73,31 @@ def show_upload_page():
         st.success(f"✅ File loaded — {len(df)} comments found")
         _show_preview_and_stats(df)
 
+        st.markdown("---")
+        st.markdown("### 2️⃣ Analyze Your Data")
         if st.button("Run Analysis", type="primary", use_container_width=True):
             run_pipeline(df)
             st.success("✅ Analysis complete! Check the Dashboard for results.")
 
     else:
         st.markdown("---")
-        with st.container():
-            st.markdown(
-                """
-                <div style="background-color:#f0f4ff; padding:20px; border-radius:8px; border-left:4px solid #4361EE;">
-                <h3 style="color:#4361EE; margin-top:0;">How to get your data</h3>
+        st.markdown("### 2️⃣ Don't Have Data Yet?")
+        st.markdown("Download our sample comment file to try the app:")
 
-                <p><strong>Option 1:</strong> Use your scraped TikTok data</p>
-                <ul>
-                <li>From the local scraper (comment_*.csv)</li>
-                <li>The app automatically handles the format</li>
-                </ul>
+        # Create a download button for the real scraped data
+        try:
+            sample_df = pd.read_csv(ROOT / "data" / "comments_20260526_233400.csv", encoding='utf-8-sig')
+            csv_data = sample_df.to_csv(index=False, encoding='utf-8-sig').encode('utf-8-sig')
 
-                <p><strong>Option 2:</strong> Use our test datasets</p>
-                <ul>
-                <li>Download a sample CSV (TERA, DENZEL, JUDITH, etc.)</li>
-                <li>Test the analysis with realistic comments</li>
-                </ul>
-
-                <p style="margin-top:20px;"><strong>Data columns (accepts both formats):</strong></p>
-                <ul>
-                <li><code>Comment Text</code> or <code>comment_text</code> — the comment</li>
-                <li><code>Comment Language</code> or <code>language</code> — language code (en, de, etc.)</li>
-                <li><code>Comment Like Count</code> or <code>like_count</code> — engagement</li>
-                <li><code>Author Nickname</code> or <code>author_username</code> — commenter handle</li>
-                </ul>
-                </div>
-                """,
-                unsafe_allow_html=True,
+            st.download_button(
+                label="📥 Download Sample Comments (Real Data)",
+                data=csv_data,
+                file_name="sample_comments.csv",
+                mime="text/csv",
+                use_container_width=True,
             )
+        except Exception:
+            st.info("Sample data file not available. Upload your own CSV instead.")
 
 
 def _normalize_columns(df: pd.DataFrame) -> pd.DataFrame:
