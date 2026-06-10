@@ -170,6 +170,7 @@ _defaults = {
     'keywords':         None,
     'clusters':         None,
     'niche_analysis':   None,
+    'requests':         None,
     '_analysis_saved':  False,   # prevent duplicate DB writes per session
 }
 for key, default in _defaults.items():

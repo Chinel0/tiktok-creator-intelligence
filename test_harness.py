@@ -26,6 +26,7 @@ from nlp.keywords import extract_keywords
 from app.components.recommendations import _generate_recommendations
 from app.components.upload import normalize_comment_columns, merge_video_metadata
 from nlp.niche_analyzer import analyze_niches
+from nlp.request_extractor import extract_requests
 
 
 # Each entry: name -> (comments_csv, videos_csv or None, expect_niche_signal)
@@ -106,6 +107,17 @@ def run_dataset(name: str, comments_file: str, videos_file: str | None,
 
     # ---- niche engagement signal (needs video metadata or video_type) ----
     _print_niche_signal(df_analyzed, videos, name, flags, expect_signal)
+
+    # ---- audience requests ----
+    requests = extract_requests(df_analyzed)
+    print(f'\n  Audience requests ({len(requests)} found):')
+    for r in requests[:6]:
+        print(f'    {r["count"]:>3}x  "{r["request"][:60]}"  [{r["top_video_type"]}]')
+    if not requests:
+        print('    (no repeated requests - real accounts may genuinely have none)')
+    if expect_signal and len(requests) < 3:
+        flags.append(f'{name}: expected >=3 repeated requests in generated data, '
+                     f'got {len(requests)}')
 
     # ---- the recommendations a tester would actually read ----
     print('\n  --- RECOMMENDATIONS PAGE OUTPUT ---')
