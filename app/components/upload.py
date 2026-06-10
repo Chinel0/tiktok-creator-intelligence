@@ -82,22 +82,24 @@ def show_upload_page():
     else:
         st.markdown("---")
         st.markdown("### 2️⃣ Don't Have Data Yet?")
-        st.markdown("Download our sample comment file to try the app:")
+        st.markdown("Download a sample comment file to try the app:")
 
         # Create a download button for the real scraped data
-        try:
-            sample_df = pd.read_csv(ROOT / "data" / "comments_20260526_233400.csv", encoding='utf-8-sig')
+        sample_path = ROOT / "data" / "comments_20260526_233400.csv"
+        if sample_path.exists():
+            sample_df = pd.read_csv(sample_path, encoding='utf-8-sig')
             csv_data = sample_df.to_csv(index=False, encoding='utf-8-sig').encode('utf-8-sig')
 
             st.download_button(
-                label="📥 Download Sample Comments (Real Data)",
+                label="📥 Download Sample Comments",
                 data=csv_data,
                 file_name="sample_comments.csv",
                 mime="text/csv",
                 use_container_width=True,
             )
-        except Exception:
-            st.info("Sample data file not available. Upload your own CSV instead.")
+            st.caption(f"Real TikTok data • {len(sample_df)} comments")
+        else:
+            st.warning("Sample data not found. Please upload your own CSV.")
 
 
 def _normalize_columns(df: pd.DataFrame) -> pd.DataFrame:
