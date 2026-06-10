@@ -116,6 +116,39 @@ def show_recommendations_page():
 # extractor). No card is shown unless the data behind it exists, and
 # every reason cites the actual numbers so creators can verify it.
 
+# Reaction/mood words make terrible "Deep Dive" topics ("Deep Dive: Wow").
+_REACTION_WORDS = {
+    'wow', 'lol', 'omg', 'lmao', 'lmaooo', 'lmaoooo', 'yes', 'no', 'same',
+    'fire', 'goals', 'ate', 'tho', 'fr', 'real', 'facts', 'love', 'cute',
+    'cool', 'vibe', 'vibes', 'energy', 'day', 'way', 'list', 'looks',
+    'look', 'peaceful', 'blessed', 'grateful', 'yum', 'obsessed', 'relatable',
+    'beautiful', 'amazing', 'talented', 'stunning', 'therapy', 'lets',
+    'good', 'best', 'perfect', 'gorgeous', 'iconic', 'queen', 'man',
+    'unreal', 'crazy', 'hard', 'clean', 'smooth', 'everything', 'tho',
+}
+
+# A deep-dive topic must also be a noun-ish content word, so bigrams of
+# leftover praise ("highlight unreal") don't slip through. Single words
+# are preferred; bigrams must contain no reaction word at all.
+_DEEP_DIVE_BLOCK = {
+    'glows', 'declines', 'assignment', 'understood',
+}
+
+
+def _first_topical_keyword(keywords: list) -> str | None:
+    """First keyword where every token is a real topic word, or None.
+    Single words are tried before bigrams - 'berlin' beats 'berlin looks'."""
+    blocked = _REACTION_WORDS | _DEEP_DIVE_BLOCK
+    candidates = (keywords or [])[:10]
+    for grams in (
+        [g for g, _ in candidates if ' ' not in g],   # single words first
+        [g for g, _ in candidates if ' ' in g],       # then bigrams
+    ):
+        for gram in grams:
+            if all(tok not in blocked for tok in gram.split()):
+                return gram
+    return None
+
 def _generate_recommendations(summary: dict, keywords: list, clusters: dict,
                               niche_analysis: dict | None = None,
                               requests: list | None = None) -> tuple:
@@ -145,9 +178,17 @@ def _generate_recommendations(summary: dict, keywords: list, clusters: dict,
         b, w = niches[best], niches[weakest]
         reason = (f'Your {best} videos average {b["comments_per_video"]} comments each — '
                   f'{ratio}x more than {weakest} ({w["comments_per_video"]}).')
-        if na.get('views_ratio') and b.get('avg_views') and w.get('avg_views'):
-            reason += (f' They also pull {na["views_ratio"]}x the views '
-                       f'({b["avg_views"]:,.0f} vs {w["avg_views"]:,.0f} on average).')
+        vr = na.get('views_ratio')
+        if vr and b.get('avg_views') and w.get('avg_views'):
+            views_str = f'{b["avg_views"]:,.0f} vs {w["avg_views"]:,.0f}'
+            if vr >= 1.2:
+                reason += f' They also pull {vr}x the views ({views_str} on average).'
+            elif vr >= 0.85:
+                reason += (f' Reach is similar ({views_str} views) — the gap is pure '
+                           f'engagement.')
+            else:
+                reason += (f' And that is despite fewer views ({views_str}) — this '
+                           f'audience earns its engagement.')
 
         best_reqs = [r for r in requests if r.get('top_video_type') == best and r['count'] > 1]
         if best_reqs:
@@ -199,6 +240,7 @@ def _generate_recommendations(summary: dict, keywords: list, clusters: dict,
     # ── What to improve ────────────────────────────────────────────────────
 
     # 1. A niche where negativity concentrates.
+    negativity_covered = False
     if niches:
         sour = [(t, m) for t, m in niches.items()
                 if m['scraped_comments'] >= 30 and m['negative_pct'] >= max(10, neg * 1.5)]
@@ -211,6 +253,17 @@ def _generate_recommendations(summary: dict, keywords: list, clusters: dict,
                 'tip':    ('Read the recent negative comments on those videos — recurring '
                            'complaints usually point at one fixable thing.'),
             })
+            negativity_covered = True
+
+    # 1b. High overall negativity with no single niche to blame.
+    if neg >= 15 and not negativity_covered:
+        improve.append({
+            'title':  'High Negative Score — Check What It Really Is',
+            'reason': f'{neg}% of all your comments score negative, spread across niches.',
+            'tip':    ('Read a sample before changing anything: sentiment tools often '
+                       'misread hype slang ("hard", "crazy", "sick") as negative. If it '
+                       'is real criticism, look for the recurring complaint.'),
+        })
 
     # 2. Concrete production complaints (audio, captions, length...).
     imp_words = clusters.get('improvement_requests', []) if clusters else []
@@ -270,15 +323,16 @@ def _generate_recommendations(summary: dict, keywords: list, clusters: dict,
             'description': desc,
         })
 
-    # One topical deep-dive from the most distinctive keyword.
-    if keywords:
-        kw = keywords[0][0]
+    # One topical deep-dive — only when the keyword is a real topic
+    # (berlin, kenya, track), never a reaction word (wow, goals, looks).
+    topical = _first_topical_keyword(keywords)
+    if topical:
         ideas.append({
-            'title':       f'Deep Dive: {kw.title()}',
+            'title':       f'Deep Dive: {topical.title()}',
             'confidence':  'Medium',
-            'description': (f'"{kw}" is the most distinctive word in your comment section — '
-                            f'your audience already associates you with it. A dedicated '
-                            f'series builds on proven interest.'),
+            'description': (f'"{topical}" is the most distinctive topic in your comment '
+                            f'section — your audience already associates you with it. '
+                            f'A dedicated series builds on proven interest.'),
         })
 
     # Last resort so the section is never empty.
