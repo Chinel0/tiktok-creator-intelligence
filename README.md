@@ -531,11 +531,38 @@ Grade bands: ≥84.1 A+ · 80.8–84 A · 77.2–78.8 B+ · 74.1–77.1 B ·
 
 **Task success rate:** tasks completed *without help* ÷ (3 tasks × participants).
 
-**Results:** *(to be filled in when tester responses are collected)*
-- SUS score: __ / 100 (Grade _)
-- Task success rate: __%
-- Top 3 usability findings: …
-- Quotes: …
+**Results (interim, n = 4 of 8 testers):**
+- **Task success rate: 100%** — 4/4 completed register → two-file upload →
+  analysis without help.
+- **Ease of use: 4.25 / 5** (single-item scale; three 4s, one 5).
+  *Note: the live form used a simplified single-item scale rather than the
+  full 10-item SUS; the SUS grid was added for the remaining participants.*
+- **"Did the analysis feel true?": 3.0 / 5** — the weakest score and the
+  most actionable one (see finding 1).
+- **Likely to use the app: 50% yes, 50% maybe, 0% no.**
+
+**Top 3 findings:**
+1. *Trust gap in keyword categorization* — testers found cluster
+   assignments opaque ("why was this word flagged?"). Fix: display the
+   reason a keyword landed in a cluster, not just the word.
+2. *Slang scored negative* — a music creator independently hit the
+   documented VADER limitation (hype slang like "hard"/"crazy" read as
+   negative), confirming the error analysis in section 4.
+3. *Demand for real data* — 3 of 4 testers said the missing piece is
+   running the analysis on their own comment sections, i.e. a
+   user-accessible scraping/export path. Strong product validation.
+
+UI bug reported: pages sometimes open scrolled to the bottom
+(Streamlit scroll-position quirk on page switch).
+
+**Quotes:**
+> "An app that scrapes through your TikTok comments, categorizes them
+> according to their positivity and gives you suggestions on future
+> videos based on users requests."
+
+> "The way it grades the comments, it makes u know if your contents are
+> really engaging and encourages you to do more, it also gives u an
+> insight of what to create."
 
 ---
 
