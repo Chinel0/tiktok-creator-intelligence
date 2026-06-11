@@ -531,12 +531,12 @@ Grade bands: ≥84.1 A+ · 80.8–84 A · 77.2–78.8 B+ · 74.1–77.1 B ·
 
 **Task success rate:** tasks completed *without help* ÷ (3 tasks × participants).
 
-**Results (interim, n = 4 of 8 testers):**
+**Results (n = 4 testers):**
 - **Task success rate: 100%** — 4/4 completed register → two-file upload →
   analysis without help.
-- **Ease of use: 4.25 / 5** (single-item scale; three 4s, one 5).
-  *Note: the live form used a simplified single-item scale rather than the
-  full 10-item SUS; the SUS grid was added for the remaining participants.*
+- **Ease of use: 4.25 / 5** (three 4s, one 5).
+  *Note: the study used a simplified single-item ease scale rather than
+  the full 10-item SUS; a formal SUS round is future work.*
 - **"Did the analysis feel true?": 3.0 / 5** — the weakest score and the
   most actionable one (see finding 1).
 - **Likely to use the app: 50% yes, 50% maybe, 0% no.**
