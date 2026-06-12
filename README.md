@@ -531,12 +531,13 @@ Grade bands: ≥84.1 A+ · 80.8–84 A · 77.2–78.8 B+ · 74.1–77.1 B ·
 
 **Task success rate:** tasks completed *without help* ÷ (3 tasks × participants).
 
-**Results (n = 4 testers):**
+**Results:**
+- **SUS score: 87.5 / 100 — Grade A+** (n = 6; standard 10-item SUS,
+  Sauro–Lewis grading scale; industry average = 68). Individual scores:
+  80, 82.5, 85, 85, 92.5, 100.
 - **Task success rate: 100%** — 4/4 completed register → two-file upload →
-  analysis without help.
-- **Ease of use: 4.25 / 5** (three 4s, one 5).
-  *Note: the study used a simplified single-item ease scale rather than
-  the full 10-item SUS; a formal SUS round is future work.*
+  analysis without help (task data from the main questionnaire, n = 4).
+- **Ease of use (single item): 4.25 / 5** (three 4s, one 5).
 - **"Did the analysis feel true?": 3.0 / 5** — the weakest score and the
   most actionable one (see finding 1).
 - **Likely to use the app: 50% yes, 50% maybe, 0% no.**
