@@ -52,6 +52,12 @@ def analyze_sentiment(df: pd.DataFrame) -> tuple:
       total, positive (%), negative (%), neutral (%)
     """
     sia = SentimentIntensityAnalyzer()
+    # Gen-Z TikTok hype slang is used as praise but scores negative in the
+    # 2014 VADER lexicon. These custom entries override the defaults.
+    sia.lexicon.update({
+        'hard': 2.5, 'crazy': 2.5, 'sick': 2.5, 'dead': 2.5,
+        'insane': 2.5, 'killed': 2.5, 'brutal': 2.5, 'fire': 2.5,
+    })
     df  = df.copy()
 
     # Use original text so VADER can read emojis, capitalisation, and punctuation.

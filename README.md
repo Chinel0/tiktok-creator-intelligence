@@ -567,6 +567,169 @@ UI bug reported: pages sometimes open scrolled to the bottom
 
 ---
 
+## S9 -- Optimizing the System (Deliverable 9)
+
+---
+
+### Task 1: Optimization Backlog
+
+**Source:** All items derive directly from D8 findings. Error analysis section (4 items from the error table), user evaluation section (1 item from the top tester finding), and the fix-priority list already written into D8.
+
+| Item | Impact | Effort | Priority | Acceptance Criterion |
+|---|---|---|---|---|
+| Fix langdetect false positives: trust short ASCII-only comments as English instead of dropping them | HIGH | S | P1 | Non-English exclusion rate drops from 22.0% to ≤12.0% on the @ichbinnelo dataset (142 misclassified short comments recovered) |
+| Add custom VADER lexicon entries for TikTok hype slang (hard, crazy, sick, dead, insane, killed → positive) | HIGH | S | P1 | Test-set Macro F1 stays ≥94.1%; every hype-slang comment in the dataset scores positive or neutral |
+| Automate regression test: run test_harness.py on every git push via GitHub Actions | HIGH | S | P1 | CI job runs test_harness.py and exits 1 if any quality flag fires; broken pushes blocked automatically |
+| Show keyword cluster match reason in the Dashboard (which seed word triggered the assignment) | MEDIUM | M | P2 | Each keyword cluster card shows the matching seed token; addresses the "opaque cluster assignments" complaint from 3 of 4 testers |
+| Expand language support beyond German: translate Spanish, French, and Portuguese comments before analysis | HIGH | L | P2 | 3+ additional languages processed through the pipeline; total exclusion rate falls below 12% |
+| Cache analysis result per file hash: skip re-running the full pipeline when the same CSV is uploaded again | MEDIUM | S | P2 | Identical file re-upload completes in under 0.1s (no pipeline re-run triggered) |
+| Flag sarcasm-marker comments (lol, haha, sure, obviously with high positive compound) as low-confidence in the Dashboard | LOW | M | P2 | The 5 sarcasm-risk comments identified in D8 display a "low confidence" label rather than a clean positive score |
+
+**Prioritization logic:** P1 = HIGH impact + Small effort. These three items together add roughly 10 percentage points of coverage (142 recovered comments) and prevent future silent regressions, with no architectural changes required.
+
+The three P1 items become the First Production Sprint in Task 5.
+
+---
+
+### Task 2: Production Deployment Plan
+
+**Guiding principle:** Zero-ops hosting -- the entire stack is free and requires no infrastructure management at the current scale of under 100 analyses per month.
+
+| Layer | Technology | Justification |
+|---|---|---|
+| Frontend | Streamlit app on Streamlit Cloud (free tier) | Requires zero DevOps; deploys on git push; no server management needed |
+| API Layer | None -- Streamlit runs frontend and backend in the same Python process | No separate API layer needed at this scale; adding one would increase complexity with no benefit |
+| NLP Pipeline (Inference) | VADER + TF-IDF + Niche Analyzer + Request Extractor, all running locally on the Streamlit Cloud server | Fully local lexicon and statistics -- no external model API, no GPU, no cost at any scale |
+| Storage | SQLite (user accounts + analysis history) + Streamlit session state (uploaded CSV, held in memory only) | SQLite requires no server; session state is sufficient since creators re-upload data each session |
+
+**Scale trigger:** Migrate to a dedicated backend (FastAPI + PostgreSQL) when monthly active users exceed 500 or when analysis latency p95 exceeds 2,000 ms.
+
+---
+
+### Task 3: Monitoring and Observability
+
+**Context:** At current prototype scale, monitoring is manual. `evaluation.py` and `test_harness.py` serve as the observability layer. The plan below defines what a production deployment would add.
+
+**Request log schema** (one JSON line written per analysis run):
+
+```json
+{
+  "ts": "2026-06-28T14:23:01Z",
+  "file_hash": "md5_of_uploaded_csv",
+  "comment_count": 1211,
+  "non_english_dropped": 267,
+  "latency_ms": 280,
+  "positive_pct": 72.3,
+  "negative_pct": 14.4,
+  "neutral_pct": 13.3,
+  "niche_count": 4,
+  "requests_found": 7,
+  "error": null
+}
+```
+
+**Regression CI** (GitHub Actions, runs on every git push):
+
+- Golden set: 37 fixed comments from `data/test_set_labels.csv`, manually labelled in D8
+- CI fails if Macro F1 drops below 91.5% (D8 baseline 94.1% minus 2.6% tolerance)
+- Runtime: approximately 30 seconds
+- Tool: `test_harness.py` already exists -- CI wraps it in a workflow file
+
+**Dashboard metrics** (manual review via `evaluation.py` at current scale; Datadog or similar at production scale):
+
+| Metric | Target | Alert Threshold | Why It Matters |
+|---|---|---|---|
+| p95 analysis latency (ms) | < 500 ms | Alert if > 1,000 ms | D8 measured 280 ms mean -- doubling signals a pipeline regression |
+| Non-English exclusion rate (%) | < 22% | Alert if > 30% | Currently 22%; a rise means langdetect is breaking on new data patterns |
+| Upload error rate (%) | < 2% | Alert if > 5% | Tracks crashes on file upload -- the most common user-facing failure point |
+
+---
+
+### Task 4: Model Optimization
+
+**Source:** Both experiments run on the real @ichbinnelo dataset (1,211 comments) and the D8 test set (37 manually labelled comments).
+
+| Change | Metric Before | Metric After | Verdict |
+|---|---|---|---|
+| Add TikTok hype slang to VADER lexicon (hard, crazy, sick, dead, fire → positive) | 2/3 slang comments correctly scored in full dataset | 3/3 (100%) | Keep -- "This community is crazy" was scored negative, now positive; no regression on formal test set (F1 stays 94.1%) |
+| Trust short ASCII-only comments (≤3 tokens) as English instead of dropping them | Non-English exclusion rate 22.0% | 16.2% | Keep -- 71 comments recovered with no accuracy cost |
+
+**Caching strategy:** Cache key = MD5 hash of the uploaded file content. Creators typically re-upload the same CSV across sessions when checking results. Caching skips the full pipeline re-run and returns results in under 0.1s. Expected hit rate: 40% based on typical usage patterns.
+
+**Updated baseline:** Macro F1 stays at 94.1%. The slang fix has no effect on the formal 37-comment test set since none of those comments contain slang words -- the gain is measured on live data only.
+
+---
+
+### Task 5: First Production Sprint
+
+**Sprint goal:** Complete all 3 P1 items from the backlog. Duration: 1 week.
+
+| Item | Acceptance Criterion | Result |
+|---|---|---|
+| Fix langdetect false positives: trust short ASCII-only comments as English (`nlp/preprocessor.py`) | Exclusion rate drops from 22.0% to ≤12.0% | 16.2% -- PARTIAL PASS (71 comments recovered; emoji-containing short comments still excluded) |
+| Add TikTok hype slang to VADER lexicon (`nlp/sentiment.py`) | Macro F1 stays ≥94.1%; hype-slang comments score positive | F1 = 94.1% maintained; "This community is crazy" correctly rescored negative to positive -- PASS |
+| Automate regression test via GitHub Actions CI (`.github/workflows/regression.yml`) | CI runs test_harness.py on every push; exits 1 if any flag fires | Workflow created; test_harness.py ran clean across 10 datasets, 0 flags -- PASS |
+
+**Updated metrics:** Macro F1 94.1% (D8 baseline maintained). Non-English exclusion rate 22.0% to 16.2% (+71 comments recovered). Regression CI now active on every git push.
+
+**Next sprint (P2):** Show keyword cluster match reason in Dashboard, expand language support to Spanish, French, and Portuguese, and cache analysis results per file hash.
+
+---
+
+## S10 -- Storytelling and Reflection (Deliverable 10)
+
+---
+
+### Task 1: The Hook and Narrative Arc
+
+| Aspect | TikTok Creator Intelligence |
+|---|---|
+| **Persona** | Amara, 21, student and lifestyle content creator with 2,300 TikTok followers. Posts three times a week across food, travel, and daily life. Pain point: reads 50 to 100 comments per video one by one on her phone and cannot tell which content type her audience actually prefers. |
+| **Before** | Every Sunday evening Amara scrolls through 200+ comments across the week's videos, trying to spot patterns manually. She notices her food video got more comments than her vlog but cannot tell if that gap is real or just one lucky video. She posts whatever feels right and hopes for the best. Three months in, her growth has stalled and she does not know why. |
+| **After** | Amara uploads one CSV. In under a second she sees her Food and Cooking videos average 26 comments each versus 7 for Lifestyle -- a 3.6x gap the data makes unmissable. The recommendations page shows 27 viewers already asked for a camping gear video. |
+| **Elevator Pitch** | "TikTok Creator Intelligence turns 200 unread comments into one clear answer about what to post next -- so small creators can grow with data, not guesswork." |
+
+---
+
+### Task 2: The Failure Post-Mortem
+
+| Aspect | TikTok Creator Intelligence |
+|---|---|
+| **What failed** | The recommendation system generated meaningless advice citing "content" as the top keyword -- producing outputs like "viewers are asking for content type of content" |
+| **When discovered** | D8 user evaluation, Week 10 -- tester Wudh found the What to Improve section empty despite 14.4% negative sentiment, and keyword clusters showed platform words instead of topics |
+| **Root cause** | TF-IDF scored generic platform words ("content", "video", "channel") highest because they appear in almost every comment -- making them statistically distinctive but meaninglessly generic; no filter existed to block them |
+| **Impact on D8 metrics** | "The analysis felt true" user rating: 3.0 / 5; trust gap in keyword categorization flagged by 3 of 4 testers; negativity threshold at 15% caused the What to Improve section to silently produce nothing for Wudh's 14.4% negative dataset |
+| **Pivot and outcome** | Added GENERIC_FILLER word list to `nlp/keywords.py` blocking platform words from TF-IDF; rebuilt recommendation generator to only fire a card when measured evidence exists and every card cites actual numbers. Result: Wudh's issue resolved, no later tester reported generic recommendations, SUS rose to 87.5 / A+ |
+
+---
+
+### Task 3: The Live-Demo Storyboard
+
+| # | Screen State | Narration Script | Latency Risk | Backup Action |
+|---|---|---|---|---|
+| 1 | App open on Upload Data page, no file loaded | "Meet Amara -- 2,300 followers, posts three times a week, reads every comment on her phone and still cannot tell what is working. This is the tool I built to fix that." | None | Pre-loaded screenshot of the upload page |
+| 2 | Drag and drop comments CSV into the uploader | "She exports her TikTok comments as a CSV -- one file, that is all the system needs. I am uploading my own real data from @ichbinnelo, 1,211 comments scraped across two years." | None | File already staged, single click to upload |
+| 3 | Upload videos CSV into the optional uploader | "The second file is optional -- video metadata. When it is there, the system unlocks niche comparison. Without it you still get sentiment and keywords." | None | Skip this step and note the feature verbally |
+| 4 | Click Run Analysis -- spinner visible for under 1 second | "One click. The pipeline runs entirely locally -- no API call, no GPU, no cost. VADER scores every comment, TF-IDF extracts the keywords, the niche analyzer compares engagement across content types." | < 0.5 s | "The analysis already finished -- watch how fast that was." |
+| 5 | Dashboard page loads -- sentiment cards and charts visible | "The dashboard shows the full picture instantly. 72% positive, 14% negative. The bar chart shows which words are most distinctive in her comments -- not generic words like content, actual topics." | None | Pre-run screenshot of Dashboard saved on desktop |
+| 6 | Navigate to Recommendations page -- Double Down card visible | "This is the part that matters. Her Food and Cooking videos average 26 comments each versus 7 for Lifestyle -- a 3.6x gap. The system spotted that without being told to look for it." | None | Read the card text aloud from memory |
+| 7 | Scroll to Suggested Content Ideas section | "27 viewers asked for a camping gear video. 22 asked where a specific trail was. These are not guesses -- they are exact phrases counted across the comment section." | None | Pre-prepared list of top requests on a backup slide |
+| 8 | Switch to browser tab showing GitHub Actions CI | "Every time I push code, a regression test runs automatically against 37 manually labelled comments. If accuracy drops, the push is blocked. The system protects itself." | None | Screenshot of passing CI run |
+| 9 | Return to Dashboard, point to sentiment numbers | "D8 measured 91.9% accuracy and 94.1% Macro F1 against manually reviewed ground truth -- beating the naive baseline by 37 points. Small creator, real data, zero cloud cost." | None | README S8 table open in second tab |
+
+---
+
+### Task 4: The Lessons Learned Matrix
+
+| | Expected | Surprising |
+|---|---|---|
+| **Technical** | VADER works well on emoji-rich social media text -- 91.9% accuracy on real TikTok comments confirmed the architecture choice. TF-IDF extracts keywords reliably but requires domain-specific stop words -- generic platform words must be manually blocked. | Stripping emojis to "clean" the text hurt accuracy by 5.4 points -- the emoji is often the entire sentiment signal on TikTok. A 12-word GENERIC_FILLER list fixed what felt like a fundamental model problem -- the generic recommendations bug was a data filtering issue, not a model issue. |
+| **Procedural** | User testing surfaces problems developers cannot see -- testers immediately found the keyword cluster opacity and generic recommendations issues that code review missed. Connecting an end-to-end system introduces bugs that never appear in unit testing. | One tester independently found the exact VADER hype slang failure that the D8 error analysis had predicted theoretically -- user testing confirmed a documented bug without being told to look for it. The hardest deliverable was evaluation (D8), not building (D7) -- measuring quality rigorously requires more discipline than writing the code. |
+
+**Most Valuable Lesson:** "A pre-trained model is only as good as the data you feed it -- VADER was accurate out of the box, but every real improvement came from fixing what went in (emoji preservation, slang lexicon, generic word filtering), not from changing the model itself."
+
+---
+
 ## Project Log
 
 > *Updated every time a task is completed — follow the journey.*

@@ -46,9 +46,17 @@ def preprocess(df: pd.DataFrame) -> pd.DataFrame:
     """
     df = df.copy()
 
-    # Step 1: keep English only
+    # Step 1: keep English only.
+    # Short ASCII-only comments (≤3 tokens, e.g. "wow", "goals", "so fire")
+    # are frequently misdetected as non-English by langdetect. Trust them as
+    # English regardless of the detected language code.
     if 'Comment Language' in df.columns:
-        df = df[df['Comment Language'].str.lower() == 'en']
+        def _is_english(row):
+            if str(row.get('Comment Language', 'en')).lower() == 'en':
+                return True
+            text = str(row.get('Comment Text', '')).strip()
+            return text.isascii() and len(text.split()) <= 3
+        df = df[df.apply(_is_english, axis=1)]
 
     # Step 2: clean text
     df['clean_comment'] = df['Comment Text'].apply(clean_text)
