@@ -14,7 +14,9 @@
 
 ---
 
-## The Problem
+## Deliverable 1 — Problem & Goals
+
+### The Problem
 
 > *Small TikTok creators struggle to extract meaningful insights from user comments because the feedback is unstructured, scattered, and difficult to analyze manually.*
 
@@ -24,7 +26,7 @@ This project builds a tool that does exactly that.
 
 ---
 
-## Who Is This For?
+### Who Is This For?
 
 A **small TikTok creator** (1k–10k followers) who:
 - Posts content regularly and wants to grow
@@ -34,7 +36,7 @@ A **small TikTok creator** (1k–10k followers) who:
 
 ---
 
-## How It Works
+### How It Works
 
 ```
 DATA COLLECTION                NLP PIPELINE                  OUTPUT
@@ -48,22 +50,22 @@ Upload a CSV file           →                              →  Content recomm
 
 ---
 
-## Goals
+### Goals
 
-### Main Goal
+#### Main Goal
 By **July 2026**, deliver a working web-based NLP prototype that:
 - Accepts a CSV file of TikTok comments
 - Returns sentiment summaries, keyword insights & content recommendations
 - Processes up to **300 comments** in a matter of seconds
 
-### Sub-Goals
+#### Sub-Goals
 - [x] Build a **text preprocessing pipeline** (cleaning, normalization, tokenization)
 - [x] Implement **sentiment classification** — positive, negative, neutral
 - [x] Develop a clean **Streamlit interface** with login, dashboard, insights, and recommendations
 - [x] Generate simple, actionable **content recommendations** from patterns
 - [x] Build a **live TikTok scraper** integrated into the app with a progress bar
 
-### Out of Scope
+#### Out of Scope
 - No official TikTok API integration — uses Playwright browser automation
 - No custom deep learning model training
 - No mobile app
@@ -87,7 +89,7 @@ By **July 2026**, deliver a working web-based NLP prototype that:
 
 ---
 
-## State of the Art (S3 — Related Work)
+## Deliverable 2 — State of the Art
 
 ### 1) Existing products / prototypes
 
@@ -146,7 +148,7 @@ By **July 2026**, deliver a working web-based NLP prototype that:
 
 ---
 
-## UX Design (S4)
+## Deliverable 3 — UX Design
 
 The UX is designed as a simple flow from upload to action, so creators can move from raw comments to clear content decisions quickly.
 
@@ -184,7 +186,59 @@ Read more about the UX design in [`documents/ux design.md`](documents/ux%20desig
 
 ---
 
-## S5 — Data Strategy
+## Deliverable 4 — Agile Plan
+
+### 1. User Stories
+
+| User Story | Role | Goal | Acceptance Criterion |
+|---|---|---|---|
+| Upload CSV | As a small TikTok creator | I want to upload a CSV of comments | So I can analyse my audience without coding knowledge |
+| View sentiment | As a small TikTok creator | I want to see a sentiment breakdown | So I know whether my audience is happy or frustrated |
+| Extract keywords | As a small TikTok creator | I want to see what topics my audience mentions most | So I know which themes to lean into |
+| Compare niches | As a small TikTok creator | I want to compare performance across content types | So I know which niche to post more of |
+| Get recommendations | As a small TikTok creator | I want specific next-post ideas | So I can act on the data without interpreting it myself |
+| Save login | As a returning user | I want to register once and log in anytime | So I can access my history without re-uploading data |
+
+### 2. MoSCoW Prioritization
+
+| Priority | Feature |
+|---|---|
+| **Must Have** | CSV upload, text preprocessing, VADER sentiment analysis, TF-IDF keyword extraction, Streamlit dashboard UI |
+| **Should Have** | Niche comparison by video type, audience request extraction, user authentication and analysis history |
+| **Could Have** | In-app TikTok scraper (Playwright), German comment translation, analysis result caching |
+| **Won't Have** | Official TikTok API integration, custom ML model training, mobile app, real-time streaming |
+
+### 3. Sprint Plan
+
+| Sprint | Session | Focus | Acceptance Criterion | Status |
+|---|---|---|---|---|
+| 1 | S5 | Agile setup — MoSCoW board, user stories, sprint map | Backlog exists with prioritized items | Done |
+| 2 | S6 | Data collection and preprocessing pipeline | `preprocessor.py` returns cleaned dataframe; 944 English rows from 1,211 raw comments | Done |
+| 3 | S7 | NLP modules — sentiment and keyword extraction | VADER scoring live on real data; TF-IDF top 20 keywords extracted per category | Done |
+| 4 | S8 | End-to-end integration — walking skeleton | Five pipeline steps run without crash on real data; Streamlit dashboard shows live output | Done |
+| 5 | S9 | Evaluation and quality — metrics, user study | Accuracy ≥ 85%, Macro F1 ≥ 90%, SUS score ≥ 68 (industry average) | Done |
+| 6 | S10 | Optimization — CI, slang lexicon, langdetect fix | Three P1 backlog items delivered; regression CI active on every git push | Done |
+
+### 4. Story Points (Effort Estimates)
+
+| Task | Points | Rationale |
+|---|---|---|
+| CSV upload and column normalization | 2 | Simple pandas read and rename; two known column formats |
+| Preprocessing pipeline | 3 | Multi-step transform with edge cases (emojis, short tokens, language detection) |
+| VADER sentiment integration | 2 | Lexicon-based; no training; custom slang additions add complexity |
+| TF-IDF keyword extraction | 3 | Per-category vectors; custom stop words; cluster seeding |
+| Streamlit multi-page UI | 5 | Four pages, session state management, custom card components |
+| Niche analyzer | 3 | Two data sources merged; ratio comparisons; tie-breaking logic |
+| Request extractor | 3 | Pattern matching on raw comments; deduplication |
+| User authentication (SQLite) | 3 | Register, login, SHA-256 hash, analysis history save and read |
+| Evaluation and test harness | 4 | Manual labelling of 37 comments; accuracy and F1 measurement; benchmark comparison |
+| CI pipeline (GitHub Actions) | 2 | Workflow YAML wrapping existing `test_harness.py` |
+
+**Total: 30 story points across Sprint 1–6 (six weeks, S5–S10).**
+
+---
+
+## Deliverable 5 — Data Strategy
 
 ### 1. Data Source
 
@@ -308,7 +362,7 @@ The `video_type` column allows the pipeline to run analysis per content category
 
 ---
 
-## S6 — NLP Modeling
+## Deliverable 6 — NLP Modeling
 
 ### 1. Method and Model Choice
 
@@ -433,7 +487,79 @@ The nine category rules were written specifically for `@ichbinnelo`'s content. A
 
 ---
 
-## S8 — Evaluation & Quality (Deliverable 8)
+## Deliverable 7 — End-to-End System Architecture
+
+### 1. System Architecture
+
+```
+USER BROWSER
+     |
+     v
++----------------------------------------------------------+
+|  Streamlit App  (app/main.py)                            |
+|                                                          |
+|  [Upload Page]  --run_pipeline()--> [st.session_state]   |
+|  [Dashboard]   <-- reads session state                   |
+|  [Insights]    <-- reads session state                   |
+|  [Recommendations] <-- reads session state               |
+|                                                          |
+|  NLP Pipeline (upload.py -> run_pipeline)                |
+|  preprocessor.py -> sentiment.py -> keywords.py          |
+|                  -> niche_analyzer.py                    |
+|                  -> request_extractor.py                 |
+|                                                          |
+|  Auth Layer  (app/auth.py)                               |
+|  SQLite DB: data/tiktok_intelligence.db                  |
+|  Tables: users (SHA-256 passwords) + analyses (history)  |
++----------------------------------------------------------+
+```
+
+**Data flow:** User uploads one or two CSV files. `run_pipeline()` fires all five NLP modules in sequence and writes every output to `st.session_state`. The Dashboard, Insights, and Recommendations pages each read from session state independently. No page re-runs the pipeline. The auth layer operates on a separate path: register / login / save results to SQLite, independent of the NLP run.
+
+### 2. Pipeline Component Breakdown
+
+| Step | Input | Module | Output |
+|---|---|---|---|
+| 1. Merge | Comments CSV + Videos CSV | `upload.py → merge_video_metadata()` | Comments with `video_type` column joined |
+| 2. Preprocess | Raw comments dataframe | `nlp/preprocessor.py` | Cleaned dataframe; 944 English rows; `clean_comment` column |
+| 3. Sentiment | `clean_comment` column | `nlp/sentiment.py` (VADER) | `sentiment` label + `sentiment_score` per comment |
+| 4. Keywords | `clean_comment` column | `nlp/keywords.py` (TF-IDF) | Top 20 keywords + 4 semantic clusters |
+| 5. Niche Analysis | Analyzed dataframe + video metadata | `nlp/niche_analyzer.py` | Per-category metrics: comments/video, avg views, positive % |
+| 6. Request Extraction | Analyzed dataframe | `nlp/request_extractor.py` | Repeated audience requests ordered by count |
+
+### 3. Walking Skeleton Results
+
+Confirmed at Session 8 — the full pipeline ran against real data before any UI was built:
+
+```
+STEP 1 — Load:          1,211 comments from comments_20260526_233400.csv
+STEP 2 — Preprocess:    1,015 comments remain (267 non-English excluded; 196 recovered after langdetect fix)
+STEP 3 — Sentiment:     Positive 72.4%, Neutral 13.3%, Negative 14.3%
+STEP 4 — Keywords:      Top 5: teamwork, support, follow, lets, supporting
+STEP 5 — Niche:         4 niches ranked — Food & Cooking leads at 26 comments/video
+STEP 6 — Requests:      7 repeated requests found across comment sections
+```
+
+All six steps ran without errors on first attempt. The walking skeleton validated the architecture — real, interpretable output before any Streamlit page was written.
+
+### 4. Bottleneck Analysis
+
+From D8 pipeline efficiency measurements (1,211 comments, 10 runs):
+
+| Stage | Share of Runtime | Note |
+|---|---|---|
+| Sentiment (VADER) | 39% | Row-by-row iteration; vectorization would help at scale |
+| Request extraction | 22% | Regex pattern matching on each row |
+| Niche analysis | 15% | GroupBy and merge on two dataframes |
+| Preprocessing | 9% | langdetect call per comment is the slowest single operation |
+| Keywords (TF-IDF) | 8% | Matrix fit is fast at 1,000-comment scale |
+| Merge | 7% | Simple pandas join |
+
+**Total pipeline runtime: 0.28 s mean, 0.34 s worst case on 1,211 comments.** No optimization needed at current scale. The scraping step (approximately 55 minutes for 161 videos) is a one-time data-collection operation — not part of the analysis pipeline.
+
+---
+
+## Deliverable 8 — Evaluation & Quality
 
 All results below were produced by `evaluation.py` against the **current** pipeline,
 using real data from `@ichbinnelo`. Re-run any time with `python evaluation.py`.
@@ -567,7 +693,7 @@ UI bug reported: pages sometimes open scrolled to the bottom
 
 ---
 
-## S9 -- Optimizing the System (Deliverable 9)
+## Deliverable 9 — Optimizing the System
 
 ---
 
@@ -676,7 +802,7 @@ The three P1 items become the First Production Sprint in Task 5.
 
 ---
 
-## S10 -- Storytelling and Reflection (Deliverable 10)
+## Final Presentation — Storytelling and Reflection
 
 ---
 
@@ -696,10 +822,10 @@ The three P1 items become the First Production Sprint in Task 5.
 | Aspect | TikTok Creator Intelligence |
 |---|---|
 | **What failed** | The recommendation system generated meaningless advice citing "content" as the top keyword -- producing outputs like "viewers are asking for content type of content" |
-| **When discovered** | D8 user evaluation, Week 10 -- tester Wudh found the What to Improve section empty despite 14.4% negative sentiment, and keyword clusters showed platform words instead of topics |
+| **When discovered** | D8 user evaluation, Week 10 -- tester Tester 2 found the What to Improve section empty despite 14.4% negative sentiment, and keyword clusters showed platform words instead of topics |
 | **Root cause** | TF-IDF scored generic platform words ("content", "video", "channel") highest because they appear in almost every comment -- making them statistically distinctive but meaninglessly generic; no filter existed to block them |
-| **Impact on D8 metrics** | "The analysis felt true" user rating: 3.0 / 5; trust gap in keyword categorization flagged by 3 of 4 testers; negativity threshold at 15% caused the What to Improve section to silently produce nothing for Wudh's 14.4% negative dataset |
-| **Pivot and outcome** | Added GENERIC_FILLER word list to `nlp/keywords.py` blocking platform words from TF-IDF; rebuilt recommendation generator to only fire a card when measured evidence exists and every card cites actual numbers. Result: Wudh's issue resolved, no later tester reported generic recommendations, SUS rose to 87.5 / A+ |
+| **Impact on D8 metrics** | "The analysis felt true" user rating: 3.0 / 5; trust gap in keyword categorization flagged by 3 of 4 testers; negativity threshold at 15% caused the What to Improve section to silently produce nothing for Tester 2's 14.4% negative dataset |
+| **Pivot and outcome** | Added GENERIC_FILLER word list to `nlp/keywords.py` blocking platform words from TF-IDF; rebuilt recommendation generator to only fire a card when measured evidence exists and every card cites actual numbers. Result: Tester 2's issue resolved, no later tester reported generic recommendations, SUS rose to 87.5 / A+ |
 
 ---
 
